@@ -1,0 +1,174 @@
+table_name,column_name,data_type,is_nullable,default_value,is_pk,is_fk,is_unique,is_indexed,check_constraint,description
+tenants,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key identitas unik entitas bisnis UMKM
+tenants,code,VARCHAR(32),false,none,false,false,true,true,none,Kode unik merchant atau bisnis UMKM (misal: TEN-001)
+tenants,name,VARCHAR(128),false,none,false,false,false,true,none,Nama resmi usaha atau toko dagang
+tenants,legal_name,VARCHAR(255),true,none,false,false,false,false,none,Nama badan hukum/badan usaha jika ada (PT/CV)
+tenants,tax_id,VARCHAR(64),true,none,false,false,false,false,none,Nomor Pokok Wajib Pajak (NPWP) pemilik usaha
+tenants,phone,VARCHAR(32),false,none,false,false,false,false,none,Nomor kontak utama WhatsApp / telepon operasional
+tenants,email,VARCHAR(128),false,none,false,false,false,true,none,Email utama pemilik usaha untuk notifikasi dan audit
+tenants,is_active,BOOLEAN,false,true,false,false,false,true,none,Flag status operasional tenant (aktif / non-aktif)
+tenants,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pembuatan tenant
+tenants,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp perubahan profil tenant terakhir
+tenants,deleted_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Timestamp soft delete jika merchant ditutup
+stores,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key cabang / gerai toko
+stores,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+stores,code,VARCHAR(32),false,none,false,false,false,true,none,Kode gerai dalam tenant (misal: STR-JKT-01)
+stores,name,VARCHAR(128),false,none,false,false,false,true,none,Nama gerai atau cabang (misal: Gerai UMKM Tebet)
+stores,address,TEXT,false,none,false,false,false,false,none,Alamat lengkap fisik lokasi gerai
+stores,city,VARCHAR(64),false,none,false,false,false,true,none,Kota / Kabupaten lokasi gerai
+stores,postal_code,VARCHAR(16),true,none,false,false,false,false,none,Kode pos lokasi gerai
+stores,phone,VARCHAR(32),true,none,false,false,false,false,none,Nomor telepon operasional cabang toko
+stores,is_active,BOOLEAN,false,true,false,false,false,true,none,Flag status operasional gerai aktif
+stores,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pembuatan data gerai
+stores,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp update data gerai
+stores,deleted_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Timestamp soft delete gerai
+users,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key pengguna sistem
+users,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+users,username,VARCHAR(64),false,none,false,false,false,true,none,Username login (misal: admin@nexsell.id)
+users,email,VARCHAR(128),false,none,false,false,true,true,none,Email pengguna untuk login dan verifikasi
+users,password_hash,VARCHAR(255),false,none,false,false,false,false,none,Hash kata sandi terenkripsi (Argon2id atau bcrypt)
+users,full_name,VARCHAR(128),false,none,false,false,false,true,none,Nama lengkap pengguna / staf kasir
+users,phone,VARCHAR(32),true,none,false,false,false,false,none,Nomor kontak handphone staf
+users,role,VARCHAR(32),false,operator,false,false,false,true,role IN ('owner','tenant-admin','operator','staff','technician'),Peran otorisasi hak akses sistem (RBAC)
+users,is_active,BOOLEAN,false,true,false,false,false,true,none,Status akun pengguna aktif / dibekukan
+users,last_login_at,TIMESTAMPTZ,true,none,false,false,false,false,none,Waktu terakhir pengguna berhasil login
+users,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pendaftaran akun
+users,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pembaharuan data akun
+users,deleted_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Timestamp soft delete akun pengguna
+user_stores,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key penugasan staf ke cabang toko
+user_stores,user_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel users(id)
+user_stores,store_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel stores(id)
+user_stores,is_primary,BOOLEAN,false,false,false,false,false,false,none,Penanda apakah cabang ini adalah tugas utama staf
+user_stores,assigned_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Waktu penugasan staf ke toko diberikan
+pos_terminals,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key mesin / register terminal kasir
+pos_terminals,store_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel stores(id)
+pos_terminals,machine_code,VARCHAR(32),false,none,false,false,true,true,none,Kode fisik unik mesin kasir (misal: POS-JKT-001)
+pos_terminals,name,VARCHAR(128),false,none,false,false,false,true,none,Nama tampilan mesin (misal: Kasir Utama - Meja 1)
+pos_terminals,device_fingerprint,VARCHAR(255),true,none,false,false,false,false,none,Hardware UUID / Device Fingerprint peranti kasir
+pos_terminals,status,VARCHAR(32),false,active,false,false,false,true,status IN ('active','inactive','maintenance'),Status operasional mesin terminal
+pos_terminals,payment_gateway_provider,VARCHAR(64),false,midtrans_qris,false,false,false,false,none,Konfigurasi gateway pembayaran QRIS yang aktif
+pos_terminals,printer_interface,VARCHAR(64),false,thermal_58mm,false,false,false,false,none,Tipe printer thermal terhubung (Bluetooth / USB)
+pos_terminals,last_sync_at,TIMESTAMPTZ,true,none,false,false,false,false,none,Waktu terakhir data terminal tersinkron ke server
+pos_terminals,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Waktu pendaftaran peranti terminal
+pos_terminals,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Waktu modifikasi konfigurasi terminal
+pos_terminals,deleted_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Timestamp soft delete mesin terminal
+cashier_shifts,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key sesi giliran kerja (shift) kasir
+cashier_shifts,terminal_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel pos_terminals(id)
+cashier_shifts,cashier_user_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel users(id) kasir yang bertugas
+cashier_shifts,shift_number,INTEGER,false,1,false,false,false,false,shift_number >= 1,Nomor giliran shift dalam hari bersangkutan
+cashier_shifts,opened_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,true,none,Waktu kasir membuka laci dan memulai shift
+cashier_shifts,closed_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Waktu kasir menutup sesi shift kerja
+cashier_shifts,opening_cash,BIGINT,false,none,false,false,false,false,opening_cash >= 0,Nominal modal awal uang tunai di laci (Rupiah integer)
+cashier_shifts,expected_closing_cash,BIGINT,true,none,false,false,false,false,expected_closing_cash >= 0,Total uang tunai teoritis hitungan sistem (Rupiah)
+cashier_shifts,actual_closing_cash,BIGINT,true,none,false,false,false,false,actual_closing_cash >= 0,Total uang tunai fisik yang dihitung kasir saat tutup
+cashier_shifts,cash_discrepancy,BIGINT,true,0,false,false,false,false,none,Selisih uang tunai (actual - expected, minus = tekor)
+cashier_shifts,status,VARCHAR(32),false,open,false,false,false,true,status IN ('open','closed','reconciled'),Status shift kasir berjalan atau sudah tutup
+cashier_shifts,notes,TEXT,true,none,false,false,false,false,none,Catatan kasir saat pergantian giliran / serah terima
+cashier_shifts,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pencatatan sesi shift
+cashier_shifts,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pembaruan sesi shift
+product_categories,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key kategori produk
+product_categories,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+product_categories,name,VARCHAR(64),false,none,false,false,false,true,none,Nama kategori produk (misal: Minuman Kopi)
+product_categories,slug,VARCHAR(64),false,none,false,false,false,true,none,Slug URL ramah mesin pencari kategori
+product_categories,sort_order,INTEGER,false,0,false,false,false,false,sort_order >= 0,Urutan tampilan kategori di layar kasir
+product_categories,is_active,BOOLEAN,false,true,false,false,false,true,none,Flag kategori aktif ditampilkan di katalog
+product_categories,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pembuatan kategori
+product_categories,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp modifikasi kategori
+product_categories,deleted_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Timestamp soft delete kategori
+products,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key item produk katalog
+products,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+products,category_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel product_categories(id)
+products,sku,VARCHAR(64),false,none,false,false,false,true,none,Stock Keeping Unit unik per tenant (misal: KPL-001)
+products,barcode,VARCHAR(64),true,none,false,false,false,true,none,Kode barcode fisik barang (EAN-13 / UPC / QR)
+products,name,VARCHAR(128),false,none,false,false,false,true,none,Nama produk dagang (misal: Kapal Api Special Mix)
+products,description,TEXT,true,none,false,false,false,false,none,Deskripsi lengkap kandungan dan khasiat produk
+products,packaging_info,VARCHAR(255),true,none,false,false,false,false,none,Informasi kemasan dan gramasi (misal: Sachet 23 gram)
+products,cost_price,BIGINT,false,0,false,false,false,false,cost_price >= 0,Harga Pokok Penjualan modal (HPP) dalam Rupiah integer
+products,base_price,BIGINT,false,none,false,false,false,true,base_price >= 0,Harga jual retail produk di kasir dalam Rupiah integer
+products,stock,INTEGER,false,0,false,false,false,true,stock >= 0,Sisa kuantitas stok fisik produk di rak / etalase
+products,min_stock_alert,INTEGER,false,5,false,false,false,false,min_stock_alert >= 0,Ambang batas minimum stok untuk memicu notifikasi restock
+products,image_url,VARCHAR(512),true,none,false,false,false,false,none,URL tautan gambar resolusi tinggi produk online
+products,is_active,BOOLEAN,false,true,false,false,false,true,none,Status ketersediaan produk untuk dijual di kasir
+products,version,BIGINT,false,1,false,false,false,false,version >= 1,Kolom versioning untuk Optimistic Concurrency Control (OCC)
+products,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp input produk ke sistem
+products,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp peremajaan data harga/stok
+products,deleted_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Timestamp soft delete produk
+inventory_movements,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key catatan mutasi buku besar stok (append-only)
+inventory_movements,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+inventory_movements,store_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel stores(id)
+inventory_movements,product_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel products(id)
+inventory_movements,movement_type,VARCHAR(32),false,none,false,false,false,true,movement_type IN ('sale','restock','adjustment','return','waste','transfer_in','transfer_out'),Jenis pergerakan stok barang
+inventory_movements,quantity_change,INTEGER,false,none,false,false,false,false,quantity_change <> 0,Kuantitas perubahan (+ masuk / - keluar)
+inventory_movements,previous_stock,INTEGER,false,none,false,false,false,false,previous_stock >= 0,Kuantitas saldo stok sebelum mutasi terjadi
+inventory_movements,resulting_stock,INTEGER,false,none,false,false,false,false,resulting_stock >= 0,Kuantitas saldo stok akhir sesudah mutasi
+inventory_movements,reference_type,VARCHAR(32),false,none,false,false,false,true,reference_type IN ('sale_invoice','manual_adjustment','purchase_order','waste_log'),Tipe dokumen dasar penyebab mutasi stok
+inventory_movements,reference_id,VARCHAR(64),true,none,false,false,false,true,none,Nomor dokumen referensi (misal: INV-20261013-004)
+inventory_movements,user_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke users(id) staf pembuat mutasi
+inventory_movements,notes,TEXT,true,none,false,false,false,false,none,Keterangan alasan mutasi atau penyesuaian stok
+inventory_movements,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,true,none,Timestamp pencatatan mutasi permanen (immutable)
+sales,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key transaksi penjualan kasir
+sales,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+sales,store_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel stores(id)
+sales,terminal_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel pos_terminals(id)
+sales,shift_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel cashier_shifts(id)
+sales,cashier_user_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel users(id) kasir pembuat nota
+sales,invoice_number,VARCHAR(64),false,none,false,false,true,true,none,Nomor faktur / struk unik (misal: INV-20261013-004)
+sales,idempotency_key,VARCHAR(64),false,none,false,false,true,true,none,Kunci idempotensi transaksi anti dobel charge dari kasir
+sales,customer_name,VARCHAR(128),true,Pelanggan Umum,false,false,false,false,none,Nama pelanggan atau pembeli pada struk
+sales,subtotal,BIGINT,false,none,false,false,false,false,subtotal >= 0,Total harga kotor seluruh item sebelum diskon dan pajak
+sales,discount_amount,BIGINT,false,0,false,false,false,false,discount_amount >= 0,Potongan harga / diskon promo nota (Rupiah integer)
+sales,tax_amount,BIGINT,false,0,false,false,false,false,tax_amount >= 0,Nilai pungutan pajak pertambahan nilai (PPN)
+sales,total_amount,BIGINT,false,none,false,false,false,true,total_amount >= 0,Total tagihan akhir bersih yang wajib dibayar
+sales,payment_status,VARCHAR(32),false,unpaid,false,false,false,true,payment_status IN ('unpaid','partially_paid','paid','refunded'),Status penyelesaian pembayaran tagihan
+sales,status,VARCHAR(32),false,completed,false,false,false,true,status IN ('pending','completed','cancelled','refunded'),Status akhir lifecycle transaksi kasir
+sales,notes,TEXT,true,none,false,false,false,false,none,Catatan khusus kasir pada pesanan penjualan
+sales,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,true,none,Waktu pencetakan dan pemrosesan pesanan
+sales,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Waktu peremajaan status pesanan
+sale_items,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key rincian item dalam pesanan nota
+sale_items,sale_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel sales(id)
+sale_items,product_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel products(id)
+sale_items,sku_snapshot,VARCHAR(64),false,none,false,false,false,false,none,Snapshot permanen SKU produk saat pesanan dicatat
+sale_items,product_name_snapshot,VARCHAR(128),false,none,false,false,false,false,none,Snapshot nama produk saat transaksi terjadi
+sale_items,cost_price_snapshot,BIGINT,false,0,false,false,false,false,cost_price_snapshot >= 0,Snapshot HPP modal saat transaksi untuk laporan laba kotor
+sale_items,unit_price,BIGINT,false,none,false,false,false,false,unit_price >= 0,Harga jual satuan produk pada saat nota dibuat
+sale_items,quantity,INTEGER,false,none,false,false,false,false,quantity > 0,Banyaknya unit barang yang dibeli oleh pelanggan
+sale_items,subtotal,BIGINT,false,none,false,false,false,false,subtotal >= 0,Total kotor baris rincian (unit_price * quantity)
+sale_items,discount_amount,BIGINT,false,0,false,false,false,false,discount_amount >= 0,Potongan diskon khusus per item jika ada
+sale_items,notes,VARCHAR(255),true,none,false,false,false,false,none,Catatan permintaan khusus pembeli per item
+sale_items,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Timestamp pencatatan baris item transaksi
+payments,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key rincian pembayaran kasir
+payments,sale_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel sales(id)
+payments,payment_method,VARCHAR(32),false,none,false,false,false,true,payment_method IN ('cash','qris','debit','credit','transfer'),Metode pelunasan yang dipilih kasir
+payments,gateway_provider,VARCHAR(64),false,cash,false,false,false,true,gateway_provider IN ('cash','midtrans','xendit','edc_bca','edc_mandiri'),Penyedia saluran gateway pembayaran digital / offline
+payments,amount,BIGINT,false,none,false,false,false,false,amount > 0,Nilai tagihan yang ditagihkan melalui metode ini
+payments,amount_paid,BIGINT,false,none,false,false,false,false,amount_paid >= 0,Uang fisik yang diserahkan konsumen ke kasir
+payments,change_amount,BIGINT,false,0,false,false,false,false,change_amount >= 0,Uang kembalian yang dikembalikan kasir kepada konsumen
+payments,gateway_reference,VARCHAR(128),true,none,false,false,false,true,none,ID transaksi payment gateway / referensi approval EDC
+payments,status,VARCHAR(32),false,pending,false,false,false,true,status IN ('pending','settled','failed','expired','refunded'),Status pemrosesan dana pembayaran
+payments,settled_at,TIMESTAMPTZ,true,none,false,false,false,true,none,Timestamp kepastian dana diterima (webhook settlement)
+payments,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,true,none,Waktu pencatatan instruksi pembayaran
+payments,updated_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,false,none,Waktu pembaruan status webhook pembayaran
+notifications,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key pesan peringatan sistem kasir
+notifications,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+notifications,store_id,BIGINT,true,none,false,true,false,true,none,Foreign key referensi ke tabel stores(id) opsional
+notifications,target_user_id,BIGINT,true,none,false,true,false,true,none,Foreign key ke users(id) penerima (null = semua staf toko)
+notifications,title,VARCHAR(128),false,none,false,false,false,false,none,Judul ringkas pemberitahuan sistem kasir
+notifications,message,TEXT,false,none,false,false,false,false,none,Isi pesan instruksi atau peringatan lengkap
+notifications,category,VARCHAR(32),false,none,false,false,false,true,category IN ('stock_alert','qris_pending','shift_alert','sync_success','security_alert'),Klasifikasi kategori notifikasi
+notifications,severity,VARCHAR(16),false,info,false,false,false,true,severity IN ('info','warning','error','success'),Tingkat urgensi dampak peringatan
+notifications,reference_type,VARCHAR(32),true,none,false,false,false,false,none,Entitas yang terkait (product, sale, terminal)
+notifications,reference_id,VARCHAR(64),true,none,false,false,false,false,none,ID referensi entitas terkait notifikasi
+notifications,is_read,BOOLEAN,false,false,false,false,false,true,none,Status baca notifikasi oleh kasir / admin
+notifications,read_at,TIMESTAMPTZ,true,none,false,false,false,false,none,Timestamp saat notifikasi pertama kali dibuka
+notifications,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,true,none,Timestamp terbitnya notifikasi
+audit_logs,id,BIGSERIAL,false,AUTO_INCREMENT,true,false,true,true,none,Primary key catatan rekam jejak audit (immutable)
+audit_logs,tenant_id,BIGINT,false,none,false,true,false,true,none,Foreign key referensi ke tabel tenants(id)
+audit_logs,user_id,BIGINT,true,none,false,true,false,true,none,Foreign key ke tabel users(id) pelaku aksi (null = sistem)
+audit_logs,action,VARCHAR(64),false,none,false,false,false,true,none,Nama tindakan (LOGIN, VOID_TRANSACTION, ADJUST_STOCK)
+audit_logs,entity_name,VARCHAR(64),false,none,false,false,false,true,none,Nama tabel/objek bisnis yang dimodifikasi
+audit_logs,entity_id,VARCHAR(64),false,none,false,false,false,true,none,ID unik entitas bisnis yang mengalami perubahan
+audit_logs,before_payload,JSONB,true,none,false,false,false,false,none,Snapshot data sebelum dilakukan aksi perubahan
+audit_logs,after_payload,JSONB,true,none,false,false,false,false,none,Snapshot data sesudah aksi berhasil diaplikasikan
+audit_logs,ip_address,VARCHAR(45),false,none,false,false,false,false,none,Alamat IP klien pengirim perintah (IPv4 / IPv6)
+audit_logs,user_agent,VARCHAR(255),true,none,false,false,false,false,none,Informasi peramban / aplikasi kasir yang digunakan
+audit_logs,created_at,TIMESTAMPTZ,false,CURRENT_TIMESTAMP,false,false,false,true,none,Timestamp permanen kejadian aksi audit keamanan

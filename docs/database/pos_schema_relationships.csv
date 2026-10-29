@@ -1,0 +1,28 @@
+relationship_id,source_table,source_column,target_table,target_column,cardinality,on_delete,on_update,description
+REL-01,stores,tenant_id,tenants,id,Many-to-One,RESTRICT,CASCADE,Satu merchant UMKM dapat memiliki banyak cabang/gerai toko
+REL-02,users,tenant_id,tenants,id,Many-to-One,RESTRICT,CASCADE,Setiap pengguna sistem kasir terikat ke satu merchant penyewa (multi-tenancy)
+REL-03,user_stores,user_id,users,id,Many-to-One,CASCADE,CASCADE,Penugasan operasional staf kasir ke toko
+REL-04,user_stores,store_id,stores,id,Many-to-One,CASCADE,CASCADE,Toko tempat staf kasir berwenang melakukan login dan transaksi
+REL-05,pos_terminals,store_id,stores,id,Many-to-One,RESTRICT,CASCADE,Setiap mesin terminal kasir beroperasi di satu cabang gerai tertentu
+REL-06,cashier_shifts,terminal_id,pos_terminals,id,Many-to-One,RESTRICT,CASCADE,Sesi buka laci kasir berlangsung pada satu terminal mesin kasir
+REL-07,cashier_shifts,cashier_user_id,users,id,Many-to-One,RESTRICT,CASCADE,Sesi shift kasir dipertanggungjawabkan oleh pengguna kasir aktif
+REL-08,product_categories,tenant_id,tenants,id,Many-to-One,RESTRICT,CASCADE,Kategori produk dikelola secara independen per tenant merchant
+REL-09,products,tenant_id,tenants,id,Many-to-One,RESTRICT,CASCADE,Katalog produk barang terisolasi per tenant merchant (multi-tenancy)
+REL-10,products,category_id,product_categories,id,Many-to-One,RESTRICT,CASCADE,Setiap produk wajib dimasukkan ke dalam satu kategori produk
+REL-11,inventory_movements,tenant_id,tenants,id,Many-to-One,RESTRICT,CASCADE,Audit buku besar mutasi stok terisolasi per merchant
+REL-12,inventory_movements,store_id,stores,id,Many-to-One,RESTRICT,CASCADE,Mutasi stok terjadi pada fisik gudang / gerai tertentu
+REL-13,inventory_movements,product_id,products,id,Many-to-One,RESTRICT,CASCADE,Barang produk yang mengalami penambahan/pengurangan stok
+REL-14,inventory_movements,user_id,users,id,Many-to-One,RESTRICT,CASCADE,Petugas kasir/gudang yang mengeksekusi mutasi stok
+REL-15,sales,tenant_id,tenants,id,Many-to-One,RESTRICT,CASCADE,Rekap transaksi penjualan terisolasi per tenant
+REL-16,sales,store_id,stores,id,Many-to-One,RESTRICT,CASCADE,Transaksi nota penjualan terjadi di cabang toko fisik tertentu
+REL-17,sales,terminal_id,pos_terminals,id,Many-to-One,RESTRICT,CASCADE,Transaksi dicetak melalui mesin terminal kasir yang terdaftar
+REL-18,sales,shift_id,cashier_shifts,id,Many-to-One,RESTRICT,CASCADE,Penjualan terikat ke sesi shift kasir aktif untuk rekonsiliasi kas
+REL-19,sales,cashier_user_id,users,id,Many-to-One,RESTRICT,CASCADE,Kasir yang bertanggung jawab melayani transaksi penjualan
+REL-20,sale_items,sale_id,sales,id,Many-to-One,RESTRICT,CASCADE,Rincian produk baris nota terikat ke nota penjualan induk
+REL-21,sale_items,product_id,products,id,Many-to-One,RESTRICT,CASCADE,Referensi katalog produk (dilengkapi snapshot nama dan HPP modal)
+REL-22,payments,sale_id,sales,id,Many-to-One,RESTRICT,CASCADE,Pencatatan pembayaran dana pelunasan nota penjualan kasir
+REL-23,notifications,tenant_id,tenants,id,Many-to-One,CASCADE,CASCADE,Pemberitahuan sistem dialokasikan ke merchant bersangkutan
+REL-24,notifications,store_id,stores,id,Many-to-One,CASCADE,CASCADE,Pemberitahuan operasional gerai (stok habis / shift tutup)
+REL-25,notifications,target_user_id,users,id,Many-to-One,CASCADE,CASCADE,Pemberitahuan privat spesifik staf kasir (null = broadcast toko)
+REL-26,audit_logs,tenant_id,tenants,id,Many-to-One,RESTRICT,CASCADE,Log kepatuhan keamanan dan audit forensik per tenant merchant
+REL-27,audit_logs,user_id,users,id,Many-to-One,SET NULL,CASCADE,Pengguna yang menjalankan tindakan berisiko (tetap tercatat meski akun dihapus)
