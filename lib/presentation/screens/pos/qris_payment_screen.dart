@@ -61,8 +61,10 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
     final total = ref.read(cartTotalAmountProvider);
     if (cartItems.isEmpty) return;
 
+    final selectedOutlet = ref.read(selectedOutletProvider);
     final user = ref.read(currentUserProvider);
-    final outletId = user?.outletId ??
+    final outletId = selectedOutlet?.id ??
+        user?.outletId ??
         (cartItems.isNotEmpty ? cartItems.first.product.outletId : 1);
     final repo = ref.read(posRepositoryProvider);
 
@@ -147,6 +149,7 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
   /// Penanganan saat pembayaran QRIS berhasil terkonfirmasi
   Future<void> _onPaymentSuccess({required SaleRecord saleRecord}) async {
     _qrisPollTimer?.cancel();
+    final selectedOutlet = ref.read(selectedOutletProvider);
     ref.read(salesProvider.notifier).addSale(saleRecord);
     ref.read(cartProvider.notifier).clear();
 
@@ -156,11 +159,13 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
       ref.read(thermalPrinterServiceProvider).printSaleReceipt(
             config: printerConfig,
             sale: saleRecord,
-            storeName: saleRecord.terminalCode.isNotEmpty
-                ? saleRecord.terminalCode
-                : 'Kato POS Outlet',
-            storeAddress: 'Jl. Jenderal Sudirman No. 1, Jakarta Pusat',
-            storePhone: '+62 812-3456-7890',
+            storeName: selectedOutlet?.name ??
+                (saleRecord.terminalCode.isNotEmpty
+                    ? saleRecord.terminalCode
+                    : 'Kopi Kato - Cabang Sudirman'),
+            storeAddress: selectedOutlet?.address ??
+                'Jl. Jenderal Sudirman No. 1, Jakarta Pusat',
+            storePhone: selectedOutlet?.phone ?? '+62 812-3456-7890',
             footerMessage: 'Terima kasih atas kunjungan Anda!',
           );
     }

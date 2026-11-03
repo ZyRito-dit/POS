@@ -10,7 +10,9 @@ class AppConstants {
   // Auth endpoints (KatoPOS Backend API)
   static const String loginEndpoint = '/auth/login';
   static const String meEndpoint = '/auth/me';
+  static const String meOutletsEndpoint = '/auth/me/outlets';
   static const String createUserEndpoint = '/auth/users';
+  static const String outletsEndpoint = '/outlets';
 
   // POS, Sales & Payment endpoints (KatoPOS Backend API)
   static const String posCatalogEndpoint = '/pos/catalog';
@@ -27,9 +29,11 @@ class AppConstants {
   static String verifyPaymentEndpoint(int paymentId) => '/payments/$paymentId/verify';
   static String saleReceiptEndpoint(int saleId) => '/sales/$saleId/receipt';
 
-  // Token storage keys
+  // Token & Session storage keys
   static const String tokenKey = 'nexsell_access_token';
   static const String tokenTypeKey = 'nexsell_token_type';
+  static const String activeOutletIdKey = 'nexsell_active_outlet_id';
+  static const String activeOutletNameKey = 'nexsell_active_outlet_name';
 
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 20);

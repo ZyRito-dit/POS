@@ -73,7 +73,7 @@ class DebugLogger {
 
     _printBox(
       title: 'TERMINAL DEBUG: API REQUEST DIKIRIM',
-      colorTag: '>> [MENGIRIM]',
+      colorTag: '[REQUEST]',
       lines: [
         'Waktu       : ${entry.formattedTime}',
         'Method      : $method',
@@ -109,7 +109,7 @@ class DebugLogger {
 
     _printBox(
       title: 'TERMINAL DEBUG: API RESPON BERHASIL ($statusCode OK)',
-      colorTag: '<< [BERHASIL]',
+      colorTag: '[SUCCESS]',
       lines: [
         'Waktu       : ${entry.formattedTime}',
         'Target URL  : $url',
@@ -150,7 +150,7 @@ class DebugLogger {
 
     _printBox(
       title: 'TERMINAL DEBUG: API RESPON GAGAL / ERROR',
-      colorTag: '!! [GAGAL]',
+      colorTag: '[ERROR]',
       lines: [
         'Waktu       : ${entry.formattedTime}',
         'Target URL  : $url',

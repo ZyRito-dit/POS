@@ -7,7 +7,7 @@ import 'package:pos_apps_umkm/core/constants/app_constants.dart';
 import 'package:pos_apps_umkm/core/utils/debug_logger.dart';
 
 /// Provides a configured [Dio] instance with auth interceptor injected.
-/// This is a lazy singleton — created once per app lifecycle.
+/// This is a lazy singleton - created once per app lifecycle.
 final dioProvider = Provider<Dio>((ref) {
   final storage = ref.watch(secureStorageProvider);
 
@@ -20,7 +20,7 @@ final dioProvider = Provider<Dio>((ref) {
     ),
   );
 
-  // HTTP traffic logger — only active in debug builds, never in release
+  // HTTP traffic logger - only active in debug builds, never in release
   if (kDebugMode) {
     dio.interceptors.add(
       PrettyDioLogger(
@@ -96,10 +96,17 @@ final dioProvider = Provider<Dio>((ref) {
         }
 
         String suggestion = '';
+        final path = error.requestOptions.path;
         if (error.response?.statusCode == 401) {
           suggestion = 'Periksa email dan password. Gunakan akun yang sudah terdaftar di Kato POS.';
         } else if (error.response?.statusCode == 400) {
-          suggestion = 'Periksa kelengkapan input formulir login.';
+          if (path.contains('/pos/checkout')) {
+            suggestion = 'Validasi transaksi checkout gagal. Pastikan outlet aktif dan data pesanan sesuai.';
+          } else if (path.contains('/auth/login')) {
+            suggestion = 'Periksa kelengkapan input formulir login.';
+          } else {
+            suggestion = 'Format permintaan tidak valid (Bad Request). Periksa data input formulir atau payload.';
+          }
         } else if (error.type == DioExceptionType.connectionTimeout ||
             error.type == DioExceptionType.connectionError) {
           suggestion = 'Server ${AppConstants.baseUrl} tidak merespon. Pastikan backend aktif dan perangkat berada di Wi-Fi yang sama.';

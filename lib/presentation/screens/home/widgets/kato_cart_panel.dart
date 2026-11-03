@@ -22,20 +22,6 @@ class KatoCartPanel extends ConsumerStatefulWidget {
 }
 
 class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
-  late final TextEditingController _discountController;
-
-  @override
-  void initState() {
-    super.initState();
-    _discountController = TextEditingController(text: '0');
-  }
-
-  @override
-  void dispose() {
-    _discountController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final cartItems = ref.watch(cartProvider);
@@ -43,10 +29,8 @@ class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
     final selectedPaymentMethod = ref.watch(selectedPaymentMethodProvider);
 
     final subtotal = cartItems.fold<int>(0, (sum, i) => sum + i.subtotal);
-    final discountPercent = int.tryParse(_discountController.text) ?? 0;
-    final discount = (subtotal * discountPercent ~/ 100);
     final tax = 0;
-    final total = (subtotal - discount + tax).clamp(0, 999999999);
+    final total = (subtotal + tax).clamp(0, 999999999);
 
     return Container(
       width: widget.isBottomSheet ? double.infinity : 360,
@@ -58,9 +42,11 @@ class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
                 left: BorderSide(color: Color(0xFFF0F0F0), width: 1),
               ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: SafeArea(
+        top: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           // 1. Header: Daftar Pesanan + Badge + Hapus Semua
           Padding(
             padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 14),
@@ -186,60 +172,6 @@ class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
                       if (i > 0) const SizedBox(height: 12),
                       _buildCartItemCard(cartItems[i]),
                     ],
-                    const SizedBox(height: 20),
-
-                    // Input Diskon (Format: Label + [ 0 ] %)
-                    const Text(
-                      'Discount',
-                      style: TextStyle(
-                        fontFamily: 'Open Sans',
-                        fontWeight: FontWeight.w400,
-                        fontSize: 12,
-                        color: Color(0xFF565656),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFFD1D5DB)),
-                          ),
-                          alignment: Alignment.center,
-                          child: TextField(
-                            controller: _discountController,
-                            textAlign: TextAlign.center,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                            style: const TextStyle(
-                              fontFamily: 'Open Sans',
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                              color: Color(0xFF1E1E1E),
-                            ),
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          '%',
-                          style: TextStyle(
-                            fontFamily: 'Open Sans',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
-                            color: Color(0xFF565656),
-                          ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 16),
                     const Divider(height: 1, thickness: 1, color: Color(0xFFF3F4F6)),
                     const SizedBox(height: 20),
@@ -307,8 +239,6 @@ class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
                       child: Column(
                         children: [
                           _buildSummaryRow('Subtotal', AppFormatters.formatRupiah(subtotal)),
-                          const SizedBox(height: 8),
-                          _buildSummaryRow('Discount', AppFormatters.formatRupiah(discount)),
                           const SizedBox(height: 8),
                           _buildSummaryRow('Pajak', AppFormatters.formatRupiah(tax)),
                           const SizedBox(height: 12),
@@ -386,6 +316,7 @@ class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
           ),
         ],
       ),
+    ),
     );
   }
 

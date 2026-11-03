@@ -101,82 +101,84 @@ class KatoSidebar extends ConsumerWidget {
           right: BorderSide(color: Color(0xFFF0F0F0), width: 1),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          const SizedBox(height: 14),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 14),
 
-          // 1. Logo Kato POS
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              'assets/Logo/logo_kato_pos.png',
-              width: 44,
-              height: 44,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => Container(
+            // 1. Logo Kato POS
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                'assets/Logo/logo_kato_pos.png',
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5247A1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.storefront_rounded,
-                  color: Colors.white,
-                  size: 24,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5247A1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.storefront_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
               ),
             ),
-          ),
 
-          const SizedBox(height: 28),
+            const SizedBox(height: 28),
 
-          // 2. Daftar 4 Menu Utama (Katalog, Transaksi, Stok, Pengaturan)
-          // Format spesifikasi: width 40, height 40, border-radius 8px, padding 5px, gap 10px
-          for (int i = 0; i < katoMenuItems.length; i++) ...[
-            if (i > 0) const SizedBox(height: 10),
-            _buildRailItem(
-              item: katoMenuItems[i],
-              isSelected: activeIndex == katoMenuItems[i].index,
-              onTap: () => onIndexChanged?.call(katoMenuItems[i].index),
+            // 2. Daftar 4 Menu Utama (Katalog, Transaksi, Stok, Pengaturan)
+            // Format spesifikasi: width 40, height 40, border-radius 8px, padding 5px, gap 10px
+            for (int i = 0; i < katoMenuItems.length; i++) ...[
+              if (i > 0) const SizedBox(height: 10),
+              _buildRailItem(
+                item: katoMenuItems[i],
+                isSelected: activeIndex == katoMenuItems[i].index,
+                onTap: () => onIndexChanged?.call(katoMenuItems[i].index),
+              ),
+            ],
+
+            const Spacer(),
+
+            // 3. Theme Toggle (Light / Dark)
+            IconButton(
+              onPressed: () {
+                final current = ref.read(themeModeProvider);
+                ref.read(themeModeProvider.notifier).state =
+                    current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+              },
+              tooltip: context.isDarkMode ? 'Mode Terang' : 'Mode Gelap',
+              icon: Icon(
+                context.isDarkMode
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+                color: const Color(0xFF808080),
+                size: 22,
+              ),
             ),
+
+            const SizedBox(height: 8),
+
+            // 4. Logout Action
+            IconButton(
+              onPressed: onLogout,
+              tooltip: 'Keluar',
+              icon: const Icon(
+                Icons.logout_rounded,
+                color: Color(0xFF808080),
+                size: 22,
+              ),
+            ),
+
+            const SizedBox(height: 16),
           ],
-
-          const Spacer(),
-
-          // 3. Theme Toggle (Light / Dark)
-          IconButton(
-            onPressed: () {
-              final current = ref.read(themeModeProvider);
-              ref.read(themeModeProvider.notifier).state =
-                  current == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-            },
-            tooltip: context.isDarkMode ? 'Mode Terang' : 'Mode Gelap',
-            icon: Icon(
-              context.isDarkMode
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-              color: const Color(0xFF808080),
-              size: 22,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // 4. Logout Action
-          IconButton(
-            onPressed: onLogout,
-            tooltip: 'Keluar',
-            icon: const Icon(
-              Icons.logout_rounded,
-              color: Color(0xFF808080),
-              size: 22,
-            ),
-          ),
-
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
     );
   }
@@ -266,7 +268,10 @@ class KatoSidebar extends ConsumerWidget {
         children: [
           _buildDrawerHeader(context, ref),
           Expanded(
-            child: _buildDrawerBody(context, ref),
+            child: SafeArea(
+              top: false,
+              child: _buildDrawerBody(context, ref),
+            ),
           ),
         ],
       ),
@@ -281,6 +286,10 @@ class KatoSidebar extends ConsumerWidget {
         ? user!.displayName
         : 'Sekarisma Putri';
     final role = user?.role?.isNotEmpty == true ? user!.role! : 'Kasir';
+    final selectedOutlet = ref.watch(selectedOutletProvider);
+    final outletName = selectedOutlet?.name.isNotEmpty == true
+        ? selectedOutlet!.name
+        : 'Kopi Kato - Cabang Sudirman';
 
     return Container(
       width: 330,
@@ -430,10 +439,10 @@ class KatoSidebar extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(width: 5),
-                              const Flexible(
+                              Flexible(
                                 child: Text(
-                                  'Kato & Co. Sudirman',
-                                  style: TextStyle(
+                                  outletName,
+                                  style: const TextStyle(
                                     fontFamily: 'Open Sans',
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,

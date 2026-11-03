@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Global ThemeMode provider — defaults to Light Mode (Mode Putih Utama).
+/// Global ThemeMode provider - defaults to Light Mode (Mode Putih Utama).
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
 
 /// Adaptive color palette for Light Mode (Primary) and Dark Mode.

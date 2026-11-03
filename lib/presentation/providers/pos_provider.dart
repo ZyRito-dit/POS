@@ -4,6 +4,7 @@ import 'package:pos_apps_umkm/data/dummy/pos_dummy_data.dart';
 import 'package:pos_apps_umkm/data/repositories/pos_repository_impl.dart';
 import 'package:pos_apps_umkm/domain/entities/auth_entity.dart';
 import 'package:pos_apps_umkm/domain/entities/pos_entities.dart';
+import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
 
 /// Active navigation tab index on the main POS screen.
 final activePosTabProvider = StateProvider<int>((ref) => 0);
@@ -32,7 +33,10 @@ class PosProductsNotifier extends Notifier<List<PosProduct>> {
     ref.read(isCatalogLoadingProvider.notifier).state = true;
     ref.read(catalogErrorProvider.notifier).state = null;
 
-    final targetOutletId = outletId ?? 1;
+    final targetOutletId = outletId ??
+        ref.read(selectedOutletProvider)?.id ??
+        ref.read(currentUserProvider)?.outletId ??
+        1;
 
     final repo = ref.read(posRepositoryProvider);
     final (products, failure) = await repo.getCatalog(

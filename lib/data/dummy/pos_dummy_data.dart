@@ -200,7 +200,7 @@ class PosDummyData {
   static PosTerminalInfo get terminalInfo => PosTerminalInfo(
         id: 1,
         machineCode: 'POS-KTO-001',
-        name: 'Kasir Utama — Kato & Co. Sudirman',
+        name: 'Kasir Utama - Kato & Co. Sudirman',
         locationName: 'Sudirman, Jakarta',
         status: 'active',
         paymentGateway: 'Midtrans & Xendit QRIS',

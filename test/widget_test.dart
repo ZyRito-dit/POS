@@ -59,6 +59,19 @@ class FakeAuthRepository implements AuthRepository {
   Future<bool> hasValidSession() async => false;
 
   @override
+  Future<(List<Outlet>?, AppFailure?)> getAccessibleOutlets() async => (
+        const [
+          Outlet(
+            id: 1,
+            tenantId: 1,
+            code: 'OUT-01',
+            name: 'Kato & Co. Sudirman',
+          ),
+        ],
+        null,
+      );
+
+  @override
   Future<void> logout() async {}
 
   @override
@@ -265,10 +278,10 @@ void main() {
     await tester.tap(find.text('Nasi Kari Ayam'));
     await tester.pumpAndSettle();
 
-    // Verify Metode Pembayaran and Detail Pembayaran appear
+    // Verify Metode Pembayaran and Detail Pembayaran appear, with Discount removed per design directive
     expect(find.text('Metode Pembayaran'), findsOneWidget);
     expect(find.text('Detail Pembayaran'), findsOneWidget);
-    expect(find.text('Discount'), findsNWidgets(2));
+    expect(find.text('Discount'), findsNothing);
 
     // Navigate to full-page PaymentScreen via 'Proses Pembayaran'
     expect(find.text('Proses Pembayaran'), findsOneWidget);
@@ -388,5 +401,57 @@ void main() {
     // Verify DevicePreview renders the app successfully
     expect(find.byType(DevicePreview), findsOneWidget);
     expect(find.text('Kato POS'), findsWidgets);
+  });
+
+  testWidgets(
+      'System Bars & Taskbar Insets Test: Tablet with Android 12L/13/14 PC-style Taskbar (64px bottom) and status bar (48px top) renders without content obstruction',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.padding = const FakeViewPadding(top: 48, bottom: 64, left: 0, right: 0);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPadding);
+
+    final container = ProviderContainer(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(FakeAuthRepository()),
+        posRepositoryProvider.overrideWithValue(FakePosRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const NexSellApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Verify login screen renders with safe insets
+    expect(find.text('Selamat datang di Kato POS'), findsOneWidget);
+
+    // Login
+    await tester.enterText(find.byType(TextFormField).first, 'admin@katopos.id');
+    await tester.enterText(find.byType(TextFormField).last, 'nexsell2026');
+    await tester.tap(find.text('Masuk'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    // Verify on home screen:
+    // Topbar text is positioned below status bar (top >= 48)
+    final topbarOffset = tester.getTopLeft(find.text('Superadmin'));
+    expect(topbarOffset.dy, greaterThanOrEqualTo(48.0));
+
+    // Add item to cart to show the checkout button in the cart panel
+    await tester.tap(find.text('Nasi Kari Ayam').first);
+    await tester.pumpAndSettle();
+
+    // Cart Panel content / "Proses Pembayaran" button sits strictly above the 64px taskbar (bottom <= 800 - 64 = 736)
+    final checkoutBtn = find.text('Proses Pembayaran');
+    expect(checkoutBtn, findsOneWidget);
+    final checkoutBtnBottom = tester.getBottomRight(checkoutBtn);
+    expect(checkoutBtnBottom.dy, lessThanOrEqualTo(800.0 - 64.0));
   });
 }

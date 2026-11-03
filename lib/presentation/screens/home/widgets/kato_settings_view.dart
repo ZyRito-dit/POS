@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_apps_umkm/core/services/thermal_printer_service.dart';
 import 'package:pos_apps_umkm/core/utils/formatters.dart';
+import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
 import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
@@ -23,6 +24,21 @@ class _KatoSettingsViewState extends ConsumerState<KatoSettingsView> {
   final _footerMessageController =
       TextEditingController(text: 'Terima kasih atas kunjungan Anda di Kato & Co!');
   bool _isScanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final outlet = ref.read(selectedOutletProvider);
+    if (outlet != null) {
+      _storeNameController.text = outlet.name;
+      if (outlet.address != null && outlet.address!.isNotEmpty) {
+        _storeAddressController.text = outlet.address!;
+      }
+      if (outlet.phone != null && outlet.phone!.isNotEmpty) {
+        _storePhoneController.text = outlet.phone!;
+      }
+    }
+  }
 
   @override
   void dispose() {

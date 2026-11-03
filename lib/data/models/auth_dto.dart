@@ -1,3 +1,5 @@
+import 'package:pos_apps_umkm/domain/entities/auth_entity.dart';
+
 // Data Transfer Objects for the KatoPOS auth API.
 // Based on Swagger specification: POST /api/v1/auth/login and user profile endpoints.
 
@@ -143,4 +145,56 @@ class UserProfileDto {
       outletId: (data['outlet_id'] as num?)?.toInt(),
     );
   }
+}
+
+class OutletDto {
+  final int id;
+  final int tenantId;
+  final String code;
+  final String name;
+  final String? address;
+  final String? phone;
+  final String? timezone;
+  final String? status;
+  final String? logoUrl;
+  final int totalCashiers;
+
+  const OutletDto({
+    required this.id,
+    required this.tenantId,
+    required this.code,
+    required this.name,
+    this.address,
+    this.phone,
+    this.timezone,
+    this.status,
+    this.logoUrl,
+    this.totalCashiers = 0,
+  });
+
+  factory OutletDto.fromJson(Map<String, dynamic> json) => OutletDto(
+        id: (json['id'] as num).toInt(),
+        tenantId: (json['tenant_id'] as num?)?.toInt() ?? 1,
+        code: (json['code'] as String?) ?? '',
+        name: (json['name'] as String?) ?? '',
+        address: json['address'] as String?,
+        phone: json['phone'] as String?,
+        timezone: json['timezone'] as String?,
+        status: json['status'] as String?,
+        logoUrl: json['logo_url'] as String?,
+        totalCashiers: (json['total_cashiers'] as num?)?.toInt() ?? 0,
+      );
+
+  Outlet toEntity() => Outlet(
+        id: id,
+        tenantId: tenantId,
+        code: code,
+        name: name,
+        address: address,
+        phone: phone,
+        timezone: timezone,
+        status: status ?? 'ACTIVE',
+        logoUrl: logoUrl,
+        totalCashiers: totalCashiers,
+      );
 }

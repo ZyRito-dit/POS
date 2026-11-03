@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Primary CTA button with integrated loading spinner.
-/// Minimum touch target: 48px height (≥ W3C WCAG 2.2 SC 2.5.8 44px requirement).
+/// Minimum touch target: 48px height (>= W3C WCAG 2.2 SC 2.5.8 44px requirement).
 class PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;

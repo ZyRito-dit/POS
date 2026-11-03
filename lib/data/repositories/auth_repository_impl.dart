@@ -122,6 +122,26 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<(List<Outlet>?, AppFailure?)> getAccessibleOutlets() async {
+    try {
+      final response = await _dio.get(AppConstants.meOutletsEndpoint);
+      final raw = response.data;
+      if (raw is Map<String, dynamic> && raw['data'] is List) {
+        final list = (raw['data'] as List)
+            .whereType<Map<String, dynamic>>()
+            .map((item) => OutletDto.fromJson(item).toEntity())
+            .toList();
+        return (list, null);
+      }
+      return (const <Outlet>[], null);
+    } on DioException catch (e) {
+      return (null, mapDioExceptionToFailure(e));
+    } catch (e) {
+      return (null, UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
   Future<void> logout() async {
     await Future.wait([
       _storage.delete(key: AppConstants.tokenKey),
@@ -148,7 +168,7 @@ class AuthRepositoryImpl implements AuthRepository {
 }
 
 /// Riverpod provider for [AuthRepository].
-/// Presentation layer injects this — never the concrete class directly.
+/// Presentation layer injects this - never the concrete class directly.
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(
     ref.watch(dioProvider),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:pos_apps_umkm/core/router/app_router.dart';
 import 'package:pos_apps_umkm/core/utils/formatters.dart';
 import 'package:pos_apps_umkm/domain/entities/pos_entities.dart';
 import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
@@ -53,6 +55,8 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
       widget.onBackPressed!();
     } else if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
+    } else {
+      context.go(AppRoutes.home);
     }
   }
 
@@ -177,7 +181,7 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
                         color: Colors.white,
                         size: 22,
                       ),
-                      tooltip: 'Kembali',
+                      tooltip: 'Kembali ke Beranda',
                     ),
                     const SizedBox(width: 8),
                     const Text(
@@ -200,18 +204,58 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
           // 2. Area Konten Utama (Tabel di Kiri & Detail di Kanan Side-by-Side)
           // -------------------------------------------------------------------
           Expanded(
-            child: screenWidth >= 700
-                ? Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Sisi Kiri: Filter Bar + Tabel Transaksi
-                      Expanded(
-                        child: Column(
+            child: SafeArea(
+              top: false,
+              bottom: true,
+              left: true,
+              right: true,
+              child: screenWidth >= 700
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Sisi Kiri: Filter Bar + Tabel Transaksi
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildFilterBar(),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                                  child: _buildTransactionsTable(
+                                    filteredSales,
+                                    _selectedSale,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Sisi Kanan: Panel Detail Pesanan (jika aktif) - Menempel di kanan berdampingan
+                        if (_selectedSale != null && !_isDetailClosed)
+                          Container(
+                            width: 360,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              border: Border(
+                                left: BorderSide(
+                                  color: Color(0xFFE2E8F0),
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: _buildOrderDetailCard(_selectedSale!),
+                          ),
+                      ],
+                    )
+                  : Stack(
+                      children: [
+                        Column(
                           children: [
                             _buildFilterBar(),
                             Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 child: _buildTransactionsTable(
                                   filteredSales,
                                   _selectedSale,
@@ -220,60 +264,26 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
                             ),
                           ],
                         ),
-                      ),
-
-                      // Sisi Kanan: Panel Detail Pesanan (jika aktif) - Menempel di kanan berdampingan
-                      if (_selectedSale != null && !_isDetailClosed)
-                        Container(
-                          width: 360,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            border: Border(
-                              left: BorderSide(
-                                color: Color(0xFFE2E8F0),
-                                width: 1,
+                        if (_selectedSale != null && !_isDetailClosed) ...[
+                          Positioned.fill(
+                            child: GestureDetector(
+                              onTap: () => setState(() => _isDetailClosed = true),
+                              child: Container(
+                                color: Colors.black.withValues(alpha: 0.25),
                               ),
                             ),
                           ),
-                          child: _buildOrderDetailCard(_selectedSale!),
-                        ),
-                    ],
-                  )
-                : Stack(
-                    children: [
-                      Column(
-                        children: [
-                          _buildFilterBar(),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              child: _buildTransactionsTable(
-                                filteredSales,
-                                _selectedSale,
-                              ),
-                            ),
+                          Positioned(
+                            top: 0,
+                            bottom: 0,
+                            right: 0,
+                            width: screenWidth * 0.9,
+                            child: _buildOrderDetailCard(_selectedSale!),
                           ),
                         ],
-                      ),
-                      if (_selectedSale != null && !_isDetailClosed) ...[
-                        Positioned.fill(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _isDetailClosed = true),
-                            child: Container(
-                              color: Colors.black.withValues(alpha: 0.25),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          bottom: 0,
-                          right: 0,
-                          width: screenWidth * 0.9,
-                          child: _buildOrderDetailCard(_selectedSale!),
-                        ),
                       ],
-                    ],
-                  ),
+                    ),
+            ),
           ),
         ],
       ),

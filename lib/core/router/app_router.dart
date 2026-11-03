@@ -11,7 +11,7 @@ import 'package:pos_apps_umkm/presentation/screens/pos/payment_success_screen.da
 import 'package:pos_apps_umkm/presentation/screens/pos/product_detail_screen.dart';
 import 'package:pos_apps_umkm/presentation/screens/pos/transactions_view.dart';
 
-/// Named route constants — single source of truth for all route paths.
+/// Named route constants - single source of truth for all route paths.
 abstract class AppRoutes {
   static const String login = '/login';
   static const String forgotPassword = '/forgot-password';

@@ -38,7 +38,30 @@ Color getCategoryColor(int categoryId) {
   }
 }
 
-/// Reusable online product image widget with loading indicator and offline fallback.
+/// Standard uniform placeholder when a product has no image or photo available.
+class ProductNoImagePlaceholder extends StatelessWidget {
+  final double iconSize;
+
+  const ProductNoImagePlaceholder({
+    super.key,
+    this.iconSize = 36,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF1F5F9),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.image_outlined,
+        size: iconSize,
+        color: const Color(0xFF94A3B8),
+      ),
+    );
+  }
+}
+
+/// Reusable online product image widget with loading indicator and standard fallback.
 class ProductNetworkImage extends StatelessWidget {
   final PosProduct product;
   final double? width;
@@ -55,16 +78,17 @@ class ProductNetworkImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final catColor = getCategoryColor(product.categoryId);
     final isOut = product.isOutOfStock;
+    final hasImage = product.imageUrl.trim().isNotEmpty;
+    final placeholderIconSize = (height != null && height! < 60) ? 22.0 : 34.0;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: Container(
         width: width,
         height: height,
-        color: c.surface2,
+        color: const Color(0xFFF1F5F9),
         child: ColorFiltered(
           colorFilter: isOut
               ? const ColorFilter.mode(
@@ -75,34 +99,34 @@ class ProductNetworkImage extends StatelessWidget {
                   Colors.transparent,
                   BlendMode.multiply,
                 ),
-          child: Image.network(
-            product.imageUrl,
-            width: width,
-            height: height,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: catColor,
-                  ),
+          child: hasImage
+              ? Image.network(
+                  product.imageUrl,
+                  width: width,
+                  height: height,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: catColor,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return ProductNoImagePlaceholder(
+                      iconSize: placeholderIconSize,
+                    );
+                  },
+                )
+              : ProductNoImagePlaceholder(
+                  iconSize: placeholderIconSize,
                 ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Center(
-                child: Icon(
-                  getCategoryIcon(product.categoryId),
-                  color: isOut ? c.textMuted : catColor,
-                  size: (height != null && height! < 60) ? 22 : 34,
-                ),
-              );
-            },
-          ),
         ),
       ),
     );

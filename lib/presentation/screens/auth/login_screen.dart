@@ -487,8 +487,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   /// Komponen Input Field sesuai format gambar referensi:
-  /// Kontainer tunggal terpadu 10px rounded, kotak ikon abu-abu #FAFAFA di sisi kiri,
+  /// Kontainer tunggal terpadu 10px rounded, kotak ikon di sisi kiri,
   /// pembatas vertikal 1px rapi, teks input presisi terpusat, dan ikon mata outline di ujung kanan.
+  /// Memiliki state interaktif: saat tidak fokus pudar, saat diklik & fokus border 1px solid #5247A1 dan ikon hidup berwarna.
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,
@@ -503,7 +504,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     TextInputAction textInputAction = TextInputAction.next,
     ValueChanged<String>? onSubmitted,
   }) {
-    const borderColor = Color(0x1A000000); // 1px solid #0000001A
+    return _FocusableInputField(
+      label: label,
+      controller: controller,
+      hintText: hintText,
+      iconSvgPath: iconSvgPath,
+      altSvgPath: altSvgPath,
+      fallbackIcon: fallbackIcon,
+      isPassword: isPassword,
+      obscureText: obscureText,
+      onToggleObscure: onToggleObscure,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
+    );
+  }
+}
+
+class _FocusableInputField extends StatefulWidget {
+  final String label;
+  final TextEditingController controller;
+  final String hintText;
+  final String iconSvgPath;
+  final String altSvgPath;
+  final IconData fallbackIcon;
+  final bool isPassword;
+  final bool obscureText;
+  final VoidCallback? onToggleObscure;
+  final TextInputType keyboardType;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onSubmitted;
+
+  const _FocusableInputField({
+    required this.label,
+    required this.controller,
+    required this.hintText,
+    required this.iconSvgPath,
+    required this.altSvgPath,
+    required this.fallbackIcon,
+    this.isPassword = false,
+    this.obscureText = false,
+    this.onToggleObscure,
+    this.keyboardType = TextInputType.text,
+    this.textInputAction = TextInputAction.next,
+    this.onSubmitted,
+  });
+
+  @override
+  State<_FocusableInputField> createState() => _FocusableInputFieldState();
+}
+
+class _FocusableInputFieldState extends State<_FocusableInputField> {
+  final FocusNode _focusNode = FocusNode();
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Saat idle (unfocused): border pudar (#E2E8F0), icon pudar (#94A3B8)
+    // Saat klik & fokus: border 1px solid #5247A1, icon hidup #5247A1
+    final borderColor = _isFocused ? const Color(0xFF5247A1) : const Color(0xFFE2E8F0);
+    final iconColor = _isFocused ? const Color(0xFF5247A1) : const Color(0xFF94A3B8);
+    final iconBgColor = _isFocused ? const Color(0xFFF1F0FA) : const Color(0xFFFAFAFA);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,7 +593,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       children: [
         // Label Text (14px, #1E1E1E)
         Text(
-          label,
+          widget.label,
           style: const TextStyle(
             fontFamily: 'Open Sans',
             fontWeight: FontWeight.w400,
@@ -522,52 +604,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         const SizedBox(height: 8),
 
-        // Kontainer Input Terpadu
-        Container(
+        // Kontainer Input Terpadu dengan animasi fokus
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
           height: 42,
           decoration: BoxDecoration(
             color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: borderColor, width: 1),
+            border: Border.all(
+              color: borderColor,
+              width: 1.0,
+            ),
+            boxShadow: _isFocused
+                ? const [
+                    BoxShadow(
+                      color: Color(0x145247A1),
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Kotak Ikon di Kiri (41 x 42, background #FAFAFA, divider kanan)
-              Container(
+              // Kotak Ikon di Kiri (41 x 42, background dinamis saat fokus, divider kanan)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
                 width: 41,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFAFAFA),
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: iconBgColor,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(9),
                     bottomLeft: Radius.circular(9),
                   ),
                   border: Border(
-                    right: BorderSide(color: borderColor, width: 1),
+                    right: BorderSide(color: borderColor, width: 1.0),
                   ),
                 ),
                 alignment: Alignment.center,
                 child: SvgPicture.asset(
-                  iconSvgPath,
+                  widget.iconSvgPath,
                   width: 18,
                   height: 18,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF808080),
+                  colorFilter: ColorFilter.mode(
+                    iconColor,
                     BlendMode.srcIn,
                   ),
                   errorBuilder: (context, error, stackTrace) =>
                       SvgPicture.asset(
-                    altSvgPath,
+                    widget.altSvgPath,
                     width: 18,
                     height: 18,
-                    colorFilter: const ColorFilter.mode(
-                      Color(0xFF808080),
+                    colorFilter: ColorFilter.mode(
+                      iconColor,
                       BlendMode.srcIn,
                     ),
                     errorBuilder: (context, error, stackTrace) => Icon(
-                      fallbackIcon,
+                      widget.fallbackIcon,
                       size: 18,
-                      color: const Color(0xFF808080),
+                      color: iconColor,
                     ),
                   ),
                 ),
@@ -580,11 +676,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: TextFormField(
-                      controller: controller,
-                      obscureText: isPassword ? obscureText : false,
-                      keyboardType: keyboardType,
-                      textInputAction: textInputAction,
-                      onFieldSubmitted: onSubmitted,
+                      controller: widget.controller,
+                      focusNode: _focusNode,
+                      obscureText: widget.isPassword ? widget.obscureText : false,
+                      keyboardType: widget.keyboardType,
+                      textInputAction: widget.textInputAction,
+                      onFieldSubmitted: widget.onSubmitted,
                       style: const TextStyle(
                         fontFamily: 'Open Sans',
                         fontWeight: FontWeight.w400,
@@ -598,12 +695,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         filled: false,
                         fillColor: Colors.transparent,
                         contentPadding: EdgeInsets.zero,
-                        hintText: hintText,
+                        hintText: widget.hintText,
                         hintStyle: const TextStyle(
                           fontFamily: 'Open Sans',
                           fontWeight: FontWeight.w400,
                           fontSize: 14,
-                          color: Color(0xFF808080),
+                          color: Color(0xFF94A3B8),
                           letterSpacing: 0,
                         ),
                         border: InputBorder.none,
@@ -616,19 +713,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
 
               // Ikon Mata Outline untuk Toggle Password
-              if (isPassword)
+              if (widget.isPassword)
                 GestureDetector(
-                  onTap: onToggleObscure,
+                  onTap: widget.onToggleObscure,
                   behavior: HitTestBehavior.opaque,
                   child: Container(
                     padding: const EdgeInsets.only(right: 14, left: 6),
                     alignment: Alignment.center,
                     child: Icon(
-                      obscureText
+                      widget.obscureText
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
                       size: 18,
-                      color: const Color(0xFF808080),
+                      color: iconColor,
                     ),
                   ),
                 ),

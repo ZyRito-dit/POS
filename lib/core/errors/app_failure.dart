@@ -1,5 +1,5 @@
 /// Domain-level failure types.
-/// These are pure domain exceptions — no HTTP or Dio references leak in here.
+/// These are pure domain exceptions - no HTTP or Dio references leak in here.
 sealed class AppFailure {
   final String message;
   const AppFailure(this.message);

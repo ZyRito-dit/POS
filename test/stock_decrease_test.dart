@@ -39,6 +39,19 @@ class _FakeAuthRepository implements AuthRepository {
   Future<(UserProfile?, AppFailure?)> getCurrentUser() async => (null, null);
 
   @override
+  Future<(List<Outlet>?, AppFailure?)> getAccessibleOutlets() async => (
+        const [
+          Outlet(
+            id: 1,
+            tenantId: 1,
+            code: 'OUT-01',
+            name: 'Kopi Kato - Cabang Sudirman',
+          ),
+        ],
+        null,
+      );
+
+  @override
   Future<bool> hasValidSession() async => true;
 
   @override

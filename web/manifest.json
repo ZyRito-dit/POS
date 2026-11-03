@@ -1,11 +1,11 @@
 {
-    "name": "pos_apps_umkm",
-    "short_name": "pos_apps_umkm",
+    "name": "Kato POS",
+    "short_name": "Kato POS",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#5247A1",
+    "theme_color": "#5247A1",
+    "description": "Aplikasi Kasir Modern Kato POS",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

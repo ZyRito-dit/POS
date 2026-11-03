@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:pos_apps_umkm/core/constants/app_constants.dart';
 import 'package:pos_apps_umkm/domain/entities/pos_entities.dart';
 
 /// Data Transfer Object untuk item katalog POS dari backend Kato POS (`/api/v1/pos/catalog`).
@@ -31,6 +32,31 @@ class PosCatalogItemDto extends Equatable {
     this.outletId = 1,
   });
 
+  /// Normalizes image URL from backend (handles localhost/127.0.0.1 MinIO host and relative paths).
+  static String? normalizeImageUrl(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+
+    // Fix MinIO localhost or 127.0.0.1 mapping for physical device compatibility
+    if (trimmed.contains('localhost:') || trimmed.contains('127.0.0.1:')) {
+      final backendUri = Uri.tryParse(AppConstants.baseUrl);
+      if (backendUri != null) {
+        return trimmed
+            .replaceAll('localhost:', '${backendUri.host}:')
+            .replaceAll('127.0.0.1:', '${backendUri.host}:');
+      }
+    }
+
+    // Fix relative path if server returned /uploads/... or /katopos/...
+    if (trimmed.startsWith('/')) {
+      final base = AppConstants.baseUrl.replaceAll(RegExp(r'/api/v1/?$'), '');
+      return '$base$trimmed';
+    }
+
+    return trimmed;
+  }
+
   factory PosCatalogItemDto.fromJson(Map<String, dynamic> json) {
     return PosCatalogItemDto(
       id: json['id'] as int? ?? 0,
@@ -57,7 +83,14 @@ class PosCatalogItemDto extends Equatable {
           (json['total_stock'] as num?)?.toInt() ??
           (json['quantity'] as num?)?.toInt() ??
           0,
-      imageUrl: json['image_url'] as String?,
+      imageUrl: normalizeImageUrl(
+        (json['image_url'] as String?) ??
+            (json['imageUrl'] as String?) ??
+            (json['image'] as String?) ??
+            (json['photo_url'] as String?) ??
+            (json['file_url'] as String?) ??
+            (json['thumbnail_url'] as String?),
+      ),
       trackStock: json['track_stock'] as bool? ?? true,
       status: json['status'] as String? ?? 'ACTIVE',
       outletId: (json['outlet_id'] as num?)?.toInt() ?? 1,
@@ -75,7 +108,9 @@ class PosCatalogItemDto extends Equatable {
       stock: stock,
       description: description,
       packagingInfo: categoryName,
-      imageUrl: imageUrl ?? '',
+      imageUrl: (imageUrl != null && imageUrl!.trim().isNotEmpty)
+          ? imageUrl!.trim()
+          : '',
       outletId: outletId,
     );
   }

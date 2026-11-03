@@ -24,10 +24,28 @@ class CashPaymentScreen extends ConsumerStatefulWidget {
 
 class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
   final TextEditingController _cashController = TextEditingController();
+  final FocusNode _cashFocusNode = FocusNode();
+  bool _isCashFocused = false;
   bool _isProcessing = false;
 
   @override
+  void initState() {
+    super.initState();
+    _cashFocusNode.addListener(_onCashFocusChange);
+  }
+
+  void _onCashFocusChange() {
+    if (mounted) {
+      setState(() {
+        _isCashFocused = _cashFocusNode.hasFocus;
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    _cashFocusNode.removeListener(_onCashFocusChange);
+    _cashFocusNode.dispose();
     _cashController.dispose();
     super.dispose();
   }
@@ -75,8 +93,10 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
 
     setState(() => _isProcessing = true);
 
+    final selectedOutlet = ref.read(selectedOutletProvider);
     final user = ref.read(currentUserProvider);
-    final outletId = user?.outletId ??
+    final outletId = selectedOutlet?.id ??
+        user?.outletId ??
         (cartItems.isNotEmpty ? cartItems.first.product.outletId : 1);
     final repo = ref.read(posRepositoryProvider);
 
@@ -117,11 +137,13 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
       ref.read(thermalPrinterServiceProvider).printSaleReceipt(
             config: printerConfig,
             sale: saleRecord,
-            storeName: saleRecord.terminalCode.isNotEmpty
-                ? saleRecord.terminalCode
-                : 'Kato POS Outlet',
-            storeAddress: 'Jl. Jenderal Sudirman No. 1, Jakarta Pusat',
-            storePhone: '+62 812-3456-7890',
+            storeName: selectedOutlet?.name ??
+                (saleRecord.terminalCode.isNotEmpty
+                    ? saleRecord.terminalCode
+                    : 'Kopi Kato - Cabang Sudirman'),
+            storeAddress: selectedOutlet?.address ??
+                'Jl. Jenderal Sudirman No. 1, Jakarta Pusat',
+            storePhone: selectedOutlet?.phone ?? '+62 812-3456-7890',
             footerMessage: 'Terima kasih atas kunjungan Anda!',
           );
     }
@@ -245,39 +267,65 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Container(
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(
+                  color: _isCashFocused
+                      ? const Color(0xFF5247A1)
+                      : const Color(0xFFE2E8F0),
+                  width: 1.0,
+                ),
+                boxShadow: _isCashFocused
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x145247A1),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 children: [
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.only(
+                    decoration: BoxDecoration(
+                      color: _isCashFocused
+                          ? const Color(0xFFF1F0FA)
+                          : const Color(0xFFF8FAFC),
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(9),
                         bottomLeft: Radius.circular(9),
                       ),
                       border: Border(
-                        right: BorderSide(color: Color(0xFFE2E8F0)),
+                        right: BorderSide(
+                          color: _isCashFocused
+                              ? const Color(0xFF5247A1)
+                              : const Color(0xFFE2E8F0),
+                          width: 1.0,
+                        ),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Rp',
                       style: TextStyle(
                         fontFamily: 'Open Sans',
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         fontSize: 14,
-                        color: Color(0xFF64748B),
+                        color: _isCashFocused
+                            ? const Color(0xFF5247A1)
+                            : const Color(0xFF94A3B8),
                       ),
                     ),
                   ),
                   Expanded(
                     child: TextField(
                       controller: _cashController,
+                      focusNode: _cashFocusNode,
                       keyboardType: TextInputType.number,
                       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       onChanged: (_) => setState(() {}),

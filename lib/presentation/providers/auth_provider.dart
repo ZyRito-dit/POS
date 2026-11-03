@@ -65,7 +65,7 @@ class LoginNotifier extends Notifier<LoginState> {
 
     if (token != null) {
       // Setup current authenticated user in session
-      final profile = token.user ??
+      var profile = token.user ??
           UserProfile(
             id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
             username: cleanEmail,
@@ -75,12 +75,61 @@ class LoginNotifier extends Notifier<LoginState> {
             role: 'CASHIER',
           );
 
+      // Fetch accessible outlets for the authenticated user (/api/v1/auth/me/outlets)
+      final (outlets, _) = await repository.getAccessibleOutlets();
+      final outletList = outlets ?? const <Outlet>[];
+      ref.read(accessibleOutletsProvider.notifier).state = outletList;
+
+      Outlet? activeOutlet;
+      if (outletList.isNotEmpty) {
+        if (profile.outletId != null) {
+          activeOutlet = outletList.firstWhere(
+            (o) => o.id == profile.outletId,
+            orElse: () => outletList.first,
+          );
+        } else {
+          activeOutlet = outletList.first;
+        }
+      } else {
+        // Fallback default outlet if none returned (e.g. offline/mock environment)
+        activeOutlet = const Outlet(
+          id: 1,
+          tenantId: 1,
+          code: 'OUT-01',
+          name: 'Kopi Kato - Cabang Sudirman',
+          address: 'Gedung Plaza Sudirman Lt. Dasar, Jakarta',
+          phone: '081234567891',
+          timezone: 'Asia/Jakarta',
+          status: 'ACTIVE',
+        );
+        ref.read(accessibleOutletsProvider.notifier).state = [activeOutlet];
+      }
+
+      // Ensure profile is synced with the active outlet ID
+      if (profile.outletId == null || profile.outletId != activeOutlet.id) {
+        profile = profile.copyWith(outletId: activeOutlet.id);
+      }
+
+      ref.read(selectedOutletProvider.notifier).state = activeOutlet;
       ref.read(currentUserProvider.notifier).state = profile;
       ref.read(isAuthenticatedSessionProvider.notifier).state = true;
+
+      // Automatically prefetch catalog for the active outlet
+      ref.read(posProductsProvider.notifier).fetchCatalog(outletId: activeOutlet.id);
+
       state = LoginSuccess(token);
     } else {
       state = const LoginFailure('Terjadi kesalahan saat memproses respon login.');
     }
+  }
+
+  Future<void> logout() async {
+    await ref.read(authRepositoryProvider).logout();
+    ref.read(currentUserProvider.notifier).state = null;
+    ref.read(selectedOutletProvider.notifier).state = null;
+    ref.read(accessibleOutletsProvider.notifier).state = const [];
+    ref.read(isAuthenticatedSessionProvider.notifier).state = false;
+    reset();
   }
 
   void setFailure(String message) {
@@ -172,12 +221,76 @@ final registerProvider = NotifierProvider<RegisterNotifier, RegisterState>(
 /// Tracks the global authenticated user session.
 final currentUserProvider = StateProvider<UserProfile?>((ref) => null);
 
+/// Tracks all accessible outlets for the currently authenticated user.
+final accessibleOutletsProvider = StateProvider<List<Outlet>>((ref) => const []);
+
+/// Tracks the active selected outlet for the current POS session.
+final selectedOutletProvider = StateProvider<Outlet?>((ref) => null);
+
 /// Tracks whether the user is currently logged into the authenticated session.
 final isAuthenticatedSessionProvider = StateProvider<bool>((ref) => false);
 
+/// Switches the active outlet, updates user context, and re-syncs the catalog.
+void switchActiveOutlet(WidgetRef ref, Outlet newOutlet) {
+  ref.read(selectedOutletProvider.notifier).state = newOutlet;
+  final currentUser = ref.read(currentUserProvider);
+  if (currentUser != null) {
+    ref.read(currentUserProvider.notifier).state =
+        currentUser.copyWith(outletId: newOutlet.id);
+  }
+  ref.read(posProductsProvider.notifier).fetchCatalog(outletId: newOutlet.id);
+}
+
 /// Session init provider checking stored tokens.
 final sessionInitProvider = FutureProvider<bool>((ref) async {
-  final hasSession = await ref.read(authRepositoryProvider).hasValidSession();
+  final authRepo = ref.read(authRepositoryProvider);
+  final hasSession = await authRepo.hasValidSession();
   ref.read(isAuthenticatedSessionProvider.notifier).state = hasSession;
+
+  if (hasSession) {
+    final (profile, _) = await authRepo.getCurrentUser();
+    if (profile != null) {
+      ref.read(currentUserProvider.notifier).state = profile;
+    }
+
+    final (outlets, _) = await authRepo.getAccessibleOutlets();
+    final outletList = outlets ?? const <Outlet>[];
+    ref.read(accessibleOutletsProvider.notifier).state = outletList;
+
+    Outlet? activeOutlet;
+    final currentProfile = ref.read(currentUserProvider);
+    if (outletList.isNotEmpty) {
+      if (currentProfile?.outletId != null) {
+        activeOutlet = outletList.firstWhere(
+          (o) => o.id == currentProfile!.outletId,
+          orElse: () => outletList.first,
+        );
+      } else {
+        activeOutlet = outletList.first;
+      }
+    } else {
+      activeOutlet = const Outlet(
+        id: 1,
+        tenantId: 1,
+        code: 'OUT-01',
+        name: 'Kopi Kato - Cabang Sudirman',
+        address: 'Gedung Plaza Sudirman Lt. Dasar, Jakarta',
+        phone: '081234567891',
+        timezone: 'Asia/Jakarta',
+        status: 'ACTIVE',
+      );
+      ref.read(accessibleOutletsProvider.notifier).state = [activeOutlet];
+    }
+
+    if (currentProfile != null &&
+        (currentProfile.outletId == null ||
+            currentProfile.outletId != activeOutlet.id)) {
+      ref.read(currentUserProvider.notifier).state =
+          currentProfile.copyWith(outletId: activeOutlet.id);
+    }
+    ref.read(selectedOutletProvider.notifier).state = activeOutlet;
+    ref.read(posProductsProvider.notifier).fetchCatalog(outletId: activeOutlet.id);
+  }
+
   return hasSession;
 });

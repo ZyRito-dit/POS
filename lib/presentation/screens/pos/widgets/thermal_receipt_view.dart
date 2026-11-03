@@ -197,8 +197,6 @@ class ThermalReceiptView extends StatelessWidget {
             const SizedBox(height: 4),
             _buildSummaryRow('Pajak', 'Rp 0'),
             const SizedBox(height: 4),
-            _buildSummaryRow('Discount', 'Rp 0'),
-            const SizedBox(height: 4),
             _buildSummaryRow('Total', AppFormatters.formatRupiah(sale.totalAmount), isBold: true),
             const SizedBox(height: 12),
             _buildDashedLine(),
