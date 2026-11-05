@@ -336,48 +336,109 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
             ),
           );
 
-          final dateWidget = InkWell(
-            onTap: _pickDateRange,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+          final dateWidget = Container(
+            height: 44,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _selectedDateRange != null
+                    ? const Color(0xFF5247A1)
+                    : const Color(0xFFE2E8F0),
               ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today_outlined,
-                    size: 16,
-                    color: Color(0xFF64748B),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _selectedDateRange != null
-                          ? '${_selectedDateRange!.start.day} ${_shortMonth(_selectedDateRange!.start.month)} - ${_selectedDateRange!.end.day} ${_shortMonth(_selectedDateRange!.end.month)}'
-                          : 'Pilih rentang tanggal',
-                      style: TextStyle(
-                        fontFamily: 'Open Sans',
-                        fontSize: 13,
-                        color: _selectedDateRange != null
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFF64748B),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: _pickDateRange,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                          color: _selectedDateRange != null
+                              ? const Color(0xFF5247A1)
+                              : const Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _selectedDateRange != null
+                                ? '${_selectedDateRange!.start.day} ${_shortMonth(_selectedDateRange!.start.month)} - ${_selectedDateRange!.end.day} ${_shortMonth(_selectedDateRange!.end.month)}'
+                                : 'Pilih rentang tanggal',
+                            style: TextStyle(
+                              fontFamily: 'Open Sans',
+                              fontSize: 13,
+                              fontWeight: _selectedDateRange != null
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: _selectedDateRange != null
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFF64748B),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
-                    color: Color(0xFF64748B),
+                ),
+                if (_selectedDateRange != null) ...[
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: 'Reset Tanggal',
+                    child: InkWell(
+                      onTap: () {
+                        setState(() => _selectedDateRange = null);
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.restart_alt_rounded,
+                              size: 13,
+                              color: Color(0xFFDC2626),
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Reset',
+                              style: TextStyle(
+                                fontFamily: 'Open Sans',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFDC2626),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  InkWell(
+                    onTap: _pickDateRange,
+                    child: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ],
-              ),
+              ],
             ),
           );
 
@@ -481,7 +542,10 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      SizedBox(width: 180, child: dateWidget),
+                      SizedBox(
+                        width: _selectedDateRange != null ? 220 : 185,
+                        child: dateWidget,
+                      ),
                       const SizedBox(width: 8),
                       SizedBox(width: 130, child: statusWidget),
                       const SizedBox(width: 8),
@@ -883,16 +947,24 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
+                    color: sale.status == TransactionStatus.completed
+                        ? const Color(0xFFE8F8EE)
+                        : (sale.status == TransactionStatus.pending
+                            ? const Color(0xFFFEF3C7)
+                            : const Color(0xFFFEE2E2)),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Text(
-                    'Completed',
+                  child: Text(
+                    _displayStatus(sale.status),
                     style: TextStyle(
                       fontFamily: 'Open Sans',
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF28A555),
+                      color: sale.status == TransactionStatus.completed
+                          ? const Color(0xFF28A555)
+                          : (sale.status == TransactionStatus.pending
+                              ? const Color(0xFFD97706)
+                              : const Color(0xFFDC2626)),
                     ),
                   ),
                 ),
@@ -1150,10 +1222,11 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
               ),
             ),
             const SizedBox(height: 10),
-            Row(
+            Wrap(
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 _buildRadioOption('Dengan Total', 'A'),
-                const SizedBox(width: 16),
                 _buildRadioOption('Tanpa Total', 'B'),
               ],
             ),
@@ -1197,10 +1270,194 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
                 ),
               ),
             ),
+
+            // Tombol Batalkan Transaksi (Hanya untuk transaksi Pending)
+            if (sale.status == TransactionStatus.pending) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: OutlinedButton.icon(
+                  onPressed: () => _handleCancelSale(sale),
+                  icon: const Icon(
+                    Icons.cancel_outlined,
+                    size: 18,
+                    color: Color(0xFFDC2626),
+                  ),
+                  label: const Text(
+                    'Batalkan Transaksi',
+                    style: TextStyle(
+                      fontFamily: 'Open Sans',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: Color(0xFFDC2626),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFDC2626),
+                    side: const BorderSide(
+                      color: Color(0xFFDC2626),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _handleCancelSale(SaleRecord sale) async {
+    final reasonController =
+        TextEditingController(text: 'Pelanggan membatalkan pesanan');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Color(0xFFDC2626),
+              size: 26,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Batalkan Transaksi?',
+              style: TextStyle(
+                fontFamily: 'Open Sans',
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Transaksi ${sale.invoiceNumber} akan dibatalkan. Stok produk yang dipesan akan otomatis dikembalikan ke inventaris.',
+              style: const TextStyle(
+                fontFamily: 'Open Sans',
+                fontSize: 13,
+                color: Color(0xFF475569),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: InputDecoration(
+                labelText: 'Alasan Pembatalan',
+                labelStyle: const TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontSize: 13,
+                  color: Color(0xFF64748B),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFF5247A1)),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+              ),
+              style: const TextStyle(
+                fontFamily: 'Open Sans',
+                fontSize: 13,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text(
+              'Kembali',
+              style: TextStyle(
+                fontFamily: 'Open Sans',
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Ya, Batalkan Transaksi',
+              style: TextStyle(
+                fontFamily: 'Open Sans',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final (success, message) =
+          await ref.read(salesProvider.notifier).cancelSale(
+                sale.id,
+                reason: reasonController.text,
+              );
+
+      if (!mounted) return;
+
+      if (success) {
+        setState(() {
+          _selectedSale = _selectedSale?.copyWith(
+            status: TransactionStatus.cancelled,
+          );
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              message ?? 'Transaksi berhasil dibatalkan dan stok dikembalikan',
+              style: const TextStyle(fontFamily: 'Open Sans'),
+            ),
+            backgroundColor: const Color(0xFF28A555),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              message ?? 'Gagal membatalkan transaksi',
+              style: const TextStyle(fontFamily: 'Open Sans'),
+            ),
+            backgroundColor: const Color(0xFFDC2626),
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildPaymentSummaryRow(
@@ -1211,15 +1468,18 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Open Sans',
-            fontSize: 13,
-            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
-            color: isBold ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Open Sans',
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+              color: isBold ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           value,
           style: TextStyle(

@@ -19,6 +19,7 @@ class CheckoutItemRequestDto {
 
 /// DTO untuk request body checkout kasir (`#/definitions/service.CheckoutRequest`).
 class CheckoutRequestDto {
+  final int? saleId;
   final int outletId;
   final String paymentMethod; // "CASH" atau "QRIS"
   final int? cashReceived;
@@ -26,6 +27,7 @@ class CheckoutRequestDto {
   final List<CheckoutItemRequestDto> items;
 
   const CheckoutRequestDto({
+    this.saleId,
     required this.outletId,
     required this.paymentMethod,
     this.cashReceived,
@@ -40,6 +42,9 @@ class CheckoutRequestDto {
       'receipt_format': receiptFormat,
       'items': items.map((e) => e.toJson()).toList(),
     };
+    if (saleId != null && saleId! > 0) {
+      map['sale_id'] = saleId;
+    }
     if (cashReceived != null && cashReceived! > 0) {
       map['cash_received'] = cashReceived;
     }

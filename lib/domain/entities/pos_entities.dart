@@ -405,3 +405,92 @@ class QrisPaymentInfo extends Equatable {
         providerReference,
       ];
 }
+
+/// Entitas status konektivitas terminal POS (`/api/v1/pos/ping`).
+class PosConnectivity extends Equatable {
+  final String status;
+  final bool isOnline;
+  final int cashierId;
+  final String cashierName;
+  final int outletId;
+  final String outletName;
+  final DateTime serverTime;
+  final String friendlyMessage;
+
+  const PosConnectivity({
+    required this.status,
+    required this.isOnline,
+    required this.cashierId,
+    required this.cashierName,
+    required this.outletId,
+    required this.outletName,
+    required this.serverTime,
+    required this.friendlyMessage,
+  });
+
+  factory PosConnectivity.initial() {
+    return PosConnectivity(
+      status: 'ONLINE',
+      isOnline: true,
+      cashierId: 0,
+      cashierName: '',
+      outletId: 0,
+      outletName: '',
+      serverTime: DateTime.now(),
+      friendlyMessage: 'Perangkat kasir terhubung secara online',
+    );
+  }
+
+  factory PosConnectivity.fromJson(Map<String, dynamic> json) {
+    return PosConnectivity(
+      status: json['status'] as String? ??
+          (json['is_online'] == false ? 'OFFLINE' : 'ONLINE'),
+      isOnline: json['is_online'] as bool? ??
+          (json['status']?.toString().toUpperCase() == 'ONLINE'),
+      cashierId: json['cashier_id'] as int? ?? 0,
+      cashierName: json['cashier_name'] as String? ?? '',
+      outletId: json['outlet_id'] as int? ?? 0,
+      outletName: json['outlet_name'] as String? ?? '',
+      serverTime: DateTime.tryParse(json['server_time'] as String? ?? '') ??
+          DateTime.now(),
+      friendlyMessage: json['friendly_message'] as String? ??
+          (json['is_online'] == false
+              ? 'Perangkat kasir offline'
+              : 'Perangkat kasir terhubung secara online'),
+    );
+  }
+
+  PosConnectivity copyWith({
+    String? status,
+    bool? isOnline,
+    int? cashierId,
+    String? cashierName,
+    int? outletId,
+    String? outletName,
+    DateTime? serverTime,
+    String? friendlyMessage,
+  }) {
+    return PosConnectivity(
+      status: status ?? this.status,
+      isOnline: isOnline ?? this.isOnline,
+      cashierId: cashierId ?? this.cashierId,
+      cashierName: cashierName ?? this.cashierName,
+      outletId: outletId ?? this.outletId,
+      outletName: outletName ?? this.outletName,
+      serverTime: serverTime ?? this.serverTime,
+      friendlyMessage: friendlyMessage ?? this.friendlyMessage,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        status,
+        isOnline,
+        cashierId,
+        cashierName,
+        outletId,
+        outletName,
+        serverTime,
+        friendlyMessage,
+      ];
+}

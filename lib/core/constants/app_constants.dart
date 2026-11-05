@@ -21,8 +21,10 @@ class AppConstants {
   static const String posCheckoutEndpoint = '/pos/checkout';
   static const String paymentMethodsEndpoint = '/payment-methods';
   static const String salesEndpoint = '/sales';
+  static const String posPingEndpoint = '/pos/ping';
 
   static String saleDetailEndpoint(int saleId) => '/sales/$saleId';
+  static String cancelSaleEndpoint(int saleId) => '/sales/$saleId/cancel';
   static String initiateQrisEndpoint(int saleId) => '/sales/$saleId/payments/qris';
   static String paymentStatusEndpoint(int paymentId) => '/payments/$paymentId';
   static String simulatePayEndpoint(int paymentId) => '/payments/$paymentId/simulate-pay';

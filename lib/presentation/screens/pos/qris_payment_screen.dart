@@ -46,12 +46,23 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
     super.dispose();
   }
 
-  void _onCancel() {
+  void _onCancel() async {
     _qrisPollTimer?.cancel();
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go(AppRoutes.home);
+    if (_qrisCheckoutResult != null) {
+      final saleId = _qrisCheckoutResult!.saleId;
+      await ref.read(salesProvider.notifier).cancelSale(
+            saleId,
+            reason: 'Dibatalkan oleh kasir di layar pembayaran QRIS',
+          );
+    }
+    if (mounted) {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        try {
+          context.go(AppRoutes.home);
+        } catch (_) {}
+      }
     }
   }
 

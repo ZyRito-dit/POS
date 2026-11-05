@@ -95,6 +95,7 @@ class _FakePosRepository implements PosRepository {
 
   @override
   Future<(CheckoutResult?, AppFailure?)> checkout({
+    int? saleId,
     required int outletId,
     required String paymentMethod,
     int? cashReceived,
@@ -139,6 +140,17 @@ class _FakePosRepository implements PosRepository {
     int perPage = 50,
   }) async =>
       (const <SaleRecord>[], null);
+
+  @override
+  Future<(PosConnectivity?, AppFailure?)> pingPos() async =>
+      (PosConnectivity.initial(), null);
+
+  @override
+  Future<(bool, String?, AppFailure?)> cancelSale({
+    required int saleId,
+    String? reason,
+  }) async =>
+      (true, 'Transaksi berhasil dibatalkan', null);
 }
 
 void main() {

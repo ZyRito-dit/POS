@@ -19,8 +19,9 @@ abstract interface class PosRepository {
   });
 
   /// Memproses checkout kasir secara atomik ke backend (`/api/v1/pos/checkout`).
-  /// Mendukung metode pembayaran CASH dan QRIS.
+  /// Mendukung metode pembayaran CASH dan QRIS, serta konfirmasi cash dengan [saleId].
   Future<(CheckoutResult?, AppFailure?)> checkout({
+    int? saleId,
     required int outletId,
     required String paymentMethod,
     int? cashReceived,
@@ -58,5 +59,14 @@ abstract interface class PosRepository {
     String? status,
     int page = 1,
     int perPage = 50,
+  });
+
+  /// Memeriksa status konektivitas online perangkat kasir (`/api/v1/pos/ping`).
+  Future<(PosConnectivity?, AppFailure?)> pingPos();
+
+  /// Membatalkan transaksi penjualan pending dan mengembalikan stok (`/api/v1/sales/{sale_id}/cancel`).
+  Future<(bool, String?, AppFailure?)> cancelSale({
+    required int saleId,
+    String? reason,
   });
 }

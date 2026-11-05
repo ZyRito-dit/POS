@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pos_apps_umkm/core/theme/app_theme.dart';
 import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
+import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
 
 class SidebarMenuItem {
   final int index;
@@ -71,6 +72,7 @@ class KatoSidebar extends ConsumerWidget {
   final int activeIndex;
   final ValueChanged<int>? onIndexChanged;
   final VoidCallback? onLogout;
+  final VoidCallback? onRefresh;
   final bool isDrawer;
 
   const KatoSidebar({
@@ -78,6 +80,7 @@ class KatoSidebar extends ConsumerWidget {
     this.activeIndex = 0,
     this.onIndexChanged,
     this.onLogout,
+    this.onRefresh,
     this.isDrawer = false,
   });
 
@@ -281,15 +284,24 @@ class KatoSidebar extends ConsumerWidget {
   /// Header ungu (#5247A1) dengan lengkungan sudut kanan bawah (radius 100px)
   /// Spesifikasi: width: 330, height: 175, padding: 5px 24px 24px 24px, gap: 20px, radius: 100px
   Widget _buildDrawerHeader(BuildContext context, WidgetRef ref) {
+    final connectivity = ref.watch(posConnectivityProvider);
+    final isOnline = connectivity.isOnline;
+    final dotColor = isOnline ? const Color(0xFF28A555) : const Color(0xFFDC2626);
+    final labelText = isOnline ? 'Online' : 'Offline';
+
     final user = ref.watch(currentUserProvider);
     final userName = user?.displayName.isNotEmpty == true
         ? user!.displayName
-        : 'Sekarisma Putri';
+        : (connectivity.cashierName.isNotEmpty
+            ? connectivity.cashierName
+            : 'Sekarisma Putri');
     final role = user?.role?.isNotEmpty == true ? user!.role! : 'Kasir';
     final selectedOutlet = ref.watch(selectedOutletProvider);
     final outletName = selectedOutlet?.name.isNotEmpty == true
         ? selectedOutlet!.name
-        : 'Kopi Kato - Cabang Sudirman';
+        : (connectivity.outletName.isNotEmpty
+            ? connectivity.outletName
+            : 'Kopi Kato - Cabang Sudirman');
 
     return Container(
       width: 330,
@@ -316,35 +328,53 @@ class KatoSidebar extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Pill Status Online (background putih, titik hijau, teks hijau)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
+                  // Pill Status Online / Offline
+                  Tooltip(
+                    message: connectivity.friendlyMessage.isNotEmpty
+                        ? connectivity.friendlyMessage
+                        : (isOnline
+                            ? 'Perangkat kasir terhubung secara online'
+                            : 'Perangkat kasir offline'),
+                    child: InkWell(
+                      onTap: () {
+                        ref
+                            .read(posConnectivityProvider.notifier)
+                            .checkConnectivity();
+                      },
                       borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF28A555),
-                            shape: BoxShape.circle,
-                          ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
                         ),
-                        const SizedBox(width: 6),
-                        const Text(
-                          'Online',
-                          style: TextStyle(
-                            fontFamily: 'Open Sans',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF28A555),
-                          ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(100),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: dotColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              labelText,
+                              style: TextStyle(
+                                fontFamily: 'Open Sans',
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: dotColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 
@@ -508,6 +538,16 @@ class KatoSidebar extends ConsumerWidget {
           // 1. Tombol Sinkronisasi (#5247A1)
           InkWell(
             onTap: () {
+              Navigator.of(context).maybePop();
+              onRefresh?.call();
+              ref.read(posProductsProvider.notifier).fetchCatalog(
+                    outletId: ref.read(selectedOutletProvider)?.id ??
+                        ref.read(currentUserProvider)?.outletId ??
+                        1,
+                  );
+              ref.invalidate(categoriesProvider);
+              ref.read(salesProvider.notifier).fetchSalesFromApi();
+              ref.read(posConnectivityProvider.notifier).checkConnectivity();
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(

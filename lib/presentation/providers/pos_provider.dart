@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_apps_umkm/data/dummy/pos_dummy_data.dart';
@@ -345,10 +347,23 @@ class SalesNotifier extends Notifier<List<SaleRecord>> {
 
   /// Menambahkan transaksi penjualan nyata dari respon API backend (`/api/v1/pos/checkout`).
   void addSale(SaleRecord record) {
-    // Hindari duplikasi jika sudah tercatat
-    if (state.any((s) => s.id == record.id || s.invoiceNumber == record.invoiceNumber)) {
+    // Jika record dengan ID / invoice sama sudah tercatat (misal dari PENDING ke COMPLETED), perbarui datanya.
+    final existingIndex = state.indexWhere(
+      (s) => s.id == record.id || s.invoiceNumber == record.invoiceNumber,
+    );
+    if (existingIndex != -1) {
+      final updated = [...state];
+      updated[existingIndex] = record;
+      state = updated;
+      if (record.status == TransactionStatus.completed) {
+        final deductMap = <int, int>{
+          for (final item in record.items) item.productId: item.qty,
+        };
+        ref.read(posProductsProvider.notifier).deductStock(deductMap);
+      }
       return;
     }
+
     state = [record, ...state];
 
     if (record.status == TransactionStatus.completed) {
@@ -383,6 +398,58 @@ class SalesNotifier extends Notifier<List<SaleRecord>> {
           severity: NotificationSeverity.success,
         );
   }
+
+  /// Membatalkan transaksi penjualan pending ke backend (`/api/v1/sales/{sale_id}/cancel`)
+  /// dan memperbarui status pada riwayat transaksi di state secara reaktif.
+  Future<(bool, String?)> cancelSale(int saleId, {String? reason}) async {
+    try {
+      final repo = ref.read(posRepositoryProvider);
+      final (success, message, failure) = await repo.cancelSale(
+        saleId: saleId,
+        reason: reason,
+      );
+
+      if (success) {
+        // Perbarui status transaksi lokal di state riwayat transaksi
+        state = [
+          for (final sale in state)
+            if (sale.id == saleId)
+              sale.copyWith(status: TransactionStatus.cancelled)
+            else
+              sale,
+        ];
+
+        // Refresh katalog produk agar pengembalian stok oleh server langsung terlihat di POS
+        final selectedOutlet = ref.read(selectedOutletProvider);
+        final currentUser = ref.read(currentUserProvider);
+        final outletId = selectedOutlet?.id ?? currentUser?.outletId ?? 1;
+        ref.read(posProductsProvider.notifier).fetchCatalog(outletId: outletId);
+
+        // Ambil ulang data sales dari API secara background untuk sinkronisasi penuh
+        fetchSalesFromApi();
+
+        return (
+          true,
+          message ?? 'Transaksi berhasil dibatalkan dan stok dikembalikan'
+        );
+      }
+
+      return (false, failure?.message ?? 'Gagal membatalkan transaksi');
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  /// Memperbarui status transaksi yang ada di history secara lokal
+  void updateSaleStatus(int saleId, TransactionStatus newStatus) {
+    state = [
+      for (final sale in state)
+        if (sale.id == saleId)
+          sale.copyWith(status: newStatus)
+        else
+          sale,
+    ];
+  }
 }
 
 final salesProvider = NotifierProvider<SalesNotifier, List<SaleRecord>>(
@@ -397,6 +464,46 @@ final filteredSalesProvider = Provider<List<SaleRecord>>((ref) {
   if (statusFilter == null) return sales;
   return sales.where((s) => s.status == statusFilter).toList();
 });
+
+// ---------------------------------------------------------------------------
+// POS Connectivity State (`/api/v1/pos/ping`)
+// ---------------------------------------------------------------------------
+
+class PosConnectivityNotifier extends Notifier<PosConnectivity> {
+  @override
+  PosConnectivity build() {
+    Future.microtask(() => checkConnectivity());
+    return PosConnectivity.initial();
+  }
+
+  /// Mengecek status koneksi online POS ke server (`/api/v1/pos/ping`)
+  Future<void> checkConnectivity() async {
+    try {
+      final repo = ref.read(posRepositoryProvider);
+      final (connectivity, failure) = await repo.pingPos();
+      if (connectivity != null) {
+        state = connectivity;
+      } else if (failure != null) {
+        state = state.copyWith(
+          isOnline: false,
+          status: 'OFFLINE',
+          friendlyMessage: failure.message,
+        );
+      }
+    } catch (_) {
+      state = state.copyWith(
+        isOnline: false,
+        status: 'OFFLINE',
+        friendlyMessage: 'Perangkat kasir terputus / offline',
+      );
+    }
+  }
+}
+
+final posConnectivityProvider =
+    NotifierProvider<PosConnectivityNotifier, PosConnectivity>(
+  PosConnectivityNotifier.new,
+);
 
 // ---------------------------------------------------------------------------
 // System Notifications State

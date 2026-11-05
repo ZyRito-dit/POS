@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
+import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
 
 /// Topbar Kato POS sesuai spesifikasi Figma dan referensi gambar.
 /// Spesifikasi:
@@ -155,7 +156,7 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
                 SizedBox(width: isMobile ? 6 : 10),
 
                 // Status Online Pill (Dipindah ke samping kanan nama toko)
-                _buildOnlineStatusPill(isMobile),
+                _buildOnlineStatusPill(context, ref, isMobile),
               ],
             ),
           ),
@@ -262,42 +263,80 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
     );
   }
 
-  Widget _buildOnlineStatusPill(bool isMobile) {
-    return Container(
-      height: 29,
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 8 : 12,
-        vertical: 5,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
+  Widget _buildOnlineStatusPill(
+    BuildContext context,
+    WidgetRef ref,
+    bool isMobile,
+  ) {
+    final connectivity = ref.watch(posConnectivityProvider);
+    final isOnline = connectivity.isOnline;
+    final dotColor = isOnline ? const Color(0xFF28A555) : const Color(0xFFDC2626);
+    final labelText = isOnline ? 'Online' : 'Offline';
+
+    return Tooltip(
+      message: connectivity.friendlyMessage.isNotEmpty
+          ? connectivity.friendlyMessage
+          : (isOnline
+              ? 'Perangkat kasir terhubung secara online'
+              : 'Perangkat kasir offline'),
+      child: InkWell(
+        onTap: () {
+          ref.read(posConnectivityProvider.notifier).checkConnectivity();
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                connectivity.friendlyMessage.isNotEmpty
+                    ? connectivity.friendlyMessage
+                    : (isOnline
+                        ? 'Perangkat kasir terhubung secara online'
+                        : 'Koneksi kasir offline'),
+                style: const TextStyle(fontFamily: 'Open Sans'),
+              ),
+              backgroundColor: dotColor,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        },
         borderRadius: BorderRadius.circular(100),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: Color(0xFF28A555),
-              shape: BoxShape.circle,
-            ),
+        child: Container(
+          height: 29,
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 8 : 12,
+            vertical: 5,
           ),
-          const SizedBox(width: 5),
-          Text(
-            'Online',
-            style: TextStyle(
-              fontFamily: 'Open Sans',
-              fontWeight: FontWeight.w700,
-              fontSize: isMobile ? 11 : 12,
-              color: const Color(0xFF28A555),
-              letterSpacing: 0,
-              height: 1.0,
-            ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(100),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                labelText,
+                style: TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontWeight: FontWeight.w700,
+                  fontSize: isMobile ? 11 : 12,
+                  color: dotColor,
+                  letterSpacing: 0,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

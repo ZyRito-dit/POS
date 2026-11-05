@@ -83,7 +83,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => _buildSlideUpPage(
           context: context,
           state: state,
-          child: const CashPaymentScreen(),
+          child: CashPaymentScreen(
+            checkoutResult: state.extra as CheckoutResult?,
+          ),
         ),
       ),
       GoRoute(

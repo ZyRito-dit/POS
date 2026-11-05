@@ -113,6 +113,7 @@ class PosRepositoryImpl implements PosRepository {
 
   @override
   Future<(CheckoutResult?, AppFailure?)> checkout({
+    int? saleId,
     required int outletId,
     required String paymentMethod,
     int? cashReceived,
@@ -124,6 +125,7 @@ class PosRepositoryImpl implements PosRepository {
         'chk_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
 
     final dto = CheckoutRequestDto(
+      saleId: saleId,
       outletId: outletId,
       paymentMethod: paymentMethod,
       cashReceived: cashReceived,
@@ -350,6 +352,57 @@ class PosRepositoryImpl implements PosRepository {
       return (null, mapDioExceptionToFailure(e));
     } catch (e) {
       return (null, UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<(PosConnectivity?, AppFailure?)> pingPos() async {
+    try {
+      final response = await _dio.get(AppConstants.posPingEndpoint);
+      final raw = response.data;
+      if (raw is Map<String, dynamic> && raw['data'] is Map<String, dynamic>) {
+        final connectivity = PosConnectivity.fromJson(
+          raw['data'] as Map<String, dynamic>,
+        );
+        return (connectivity, null);
+      }
+      return (
+        null,
+        const UnknownFailure('Format data status konektivitas POS tidak valid')
+      );
+    } on DioException catch (e) {
+      return (null, mapDioExceptionToFailure(e));
+    } catch (e) {
+      return (null, UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<(bool, String?, AppFailure?)> cancelSale({
+    required int saleId,
+    String? reason,
+  }) async {
+    try {
+      final data = <String, dynamic>{};
+      if (reason != null && reason.trim().isNotEmpty) {
+        data['reason'] = reason.trim();
+      }
+
+      final response = await _dio.post(
+        AppConstants.cancelSaleEndpoint(saleId),
+        data: data,
+      );
+
+      final raw = response.data;
+      final message = raw is Map<String, dynamic>
+          ? (raw['message'] as String? ?? 'Transaksi berhasil dibatalkan')
+          : 'Transaksi berhasil dibatalkan';
+
+      return (true, message, null);
+    } on DioException catch (e) {
+      return (false, null, mapDioExceptionToFailure(e));
+    } catch (e) {
+      return (false, null, UnknownFailure(e.toString()));
     }
   }
 }

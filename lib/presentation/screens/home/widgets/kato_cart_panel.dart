@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pos_apps_umkm/core/router/app_router.dart';
 import 'package:pos_apps_umkm/core/utils/formatters.dart';
+import 'package:pos_apps_umkm/data/repositories/pos_repository_impl.dart';
 import 'package:pos_apps_umkm/domain/entities/pos_entities.dart';
+import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
 import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
 import 'package:pos_apps_umkm/presentation/screens/home/widgets/dashed_divider.dart';
 
@@ -22,6 +24,81 @@ class KatoCartPanel extends ConsumerStatefulWidget {
 }
 
 class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
+  bool _isProcessingCheckout = false;
+
+  Future<void> _handleCheckout(PaymentMethod method) async {
+    if (_isProcessingCheckout) return;
+
+    if (method == PaymentMethod.cash) {
+      final cartItems = ref.read(cartProvider);
+      if (cartItems.isEmpty) return;
+
+      final selectedOutlet = ref.read(selectedOutletProvider);
+      final user = ref.read(currentUserProvider);
+      final outletId = selectedOutlet?.id ??
+          user?.outletId ??
+          (cartItems.isNotEmpty ? cartItems.first.product.outletId : 1);
+      final repo = ref.read(posRepositoryProvider);
+
+      setState(() => _isProcessingCheckout = true);
+
+      try {
+        final (checkoutResult, failure) = await repo.checkout(
+          outletId: outletId,
+          paymentMethod: 'CASH',
+          items: cartItems,
+          receiptFormat: 'A',
+        );
+
+        if (!mounted) return;
+
+        if (failure != null || checkoutResult == null) {
+          setState(() => _isProcessingCheckout = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Gagal memproses transaksi: ${failure?.message ?? "Terjadi kesalahan di server."}',
+                style: const TextStyle(fontFamily: 'Open Sans', color: Colors.white),
+              ),
+              backgroundColor: const Color(0xFFDC2626),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+
+        // Catat transaksi dengan status PENDING ke riwayat transaksi
+        ref.read(salesProvider.notifier).addSale(
+              checkoutResult.toSaleRecord(method: PaymentMethod.cash),
+            );
+
+        if (widget.isBottomSheet && context.mounted) {
+          Navigator.of(context).pop();
+        }
+
+        if (mounted) {
+          setState(() => _isProcessingCheckout = false);
+          context.push(AppRoutes.paymentCash, extra: checkoutResult);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isProcessingCheckout = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Terjadi kesalahan: $e'),
+              backgroundColor: const Color(0xFFDC2626),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } else {
+      if (widget.isBottomSheet && context.mounted) {
+        Navigator.of(context).pop();
+      }
+      context.push(AppRoutes.paymentQris);
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final cartItems = ref.watch(cartProvider);
@@ -260,19 +337,11 @@ class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
                   SizedBox(
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: cartItems.isEmpty
+                      onPressed: cartItems.isEmpty || _isProcessingCheckout
                           ? null
-                          : () {
-                              if (widget.isBottomSheet && context.mounted) {
-                                Navigator.of(context).pop();
-                              }
-                              final method = ref.read(selectedPaymentMethodProvider);
-                              if (method == PaymentMethod.cash) {
-                                context.push(AppRoutes.paymentCash);
-                              } else {
-                                context.push(AppRoutes.paymentQris);
-                              }
-                            },
+                          : () => _handleCheckout(
+                                ref.read(selectedPaymentMethodProvider),
+                              ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF5247A1),
                         disabledBackgroundColor:
@@ -285,26 +354,35 @@ class _KatoCartPanelState extends ConsumerState<KatoCartPanel> {
                         ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Proses Pembayaran',
-                            style: TextStyle(
-                              fontFamily: 'Open Sans',
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: Colors.white,
+                      child: _isProcessingCheckout
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Proses Pembayaran',
+                                  style: TextStyle(
+                                    fontFamily: 'Open Sans',
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                              ],
                             ),
-                          ),
-                          SizedBox(width: 8),
-                          Icon(
-                            Icons.chevron_right_rounded,
-                            size: 18,
-                            color: Colors.white,
-                          ),
-                        ],
-                      ),
                     ),
                   ),
 

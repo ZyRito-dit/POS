@@ -150,14 +150,49 @@ class FakePosRepository implements PosRepository {
 
   @override
   Future<(CheckoutResult?, AppFailure?)> checkout({
+    int? saleId,
     required int outletId,
     required String paymentMethod,
     int? cashReceived,
     required List<CartItem> items,
     String receiptFormat = 'A',
     String? idempotencyKey,
-  }) async =>
-      (null, null);
+  }) async {
+    final total = items.fold<int>(0, (sum, i) => sum + i.subtotal);
+    final finalTotal = total > 0 ? total : 25000;
+    final isPaid = cashReceived != null && cashReceived >= finalTotal;
+    return (
+      CheckoutResult(
+        saleId: saleId ?? 5001,
+        transactionNo: 'TRX-${saleId ?? 5001}',
+        outletName: 'Kopi Kato',
+        cashierName: 'Kasir',
+        items: items.isNotEmpty
+            ? items
+                .map((i) => SaleItemRecord(
+                      productId: i.product.id,
+                      sku: i.product.sku,
+                      productName: i.product.name,
+                      unitPrice: i.product.basePrice,
+                      qty: i.qty,
+                    ))
+                .toList()
+            : const [],
+        subtotal: finalTotal,
+        discountAmount: 0,
+        taxAmount: 0,
+        totalAmount: finalTotal,
+        paidAmount: cashReceived ?? 0,
+        changeAmount: isPaid ? (cashReceived! - finalTotal) : 0,
+        paymentMethod: paymentMethod,
+        paymentStatus: isPaid ? 'PAID' : 'PENDING',
+        status: isPaid ? 'COMPLETED' : 'PENDING',
+        receiptFormat: receiptFormat,
+        createdAt: DateTime.now(),
+      ),
+      null,
+    );
+  }
 
   @override
   Future<(QrisPaymentInfo?, AppFailure?)> initiateQris({
@@ -194,6 +229,17 @@ class FakePosRepository implements PosRepository {
     int perPage = 50,
   }) async =>
       (const <SaleRecord>[], null);
+
+  @override
+  Future<(PosConnectivity?, AppFailure?)> pingPos() async =>
+      (PosConnectivity.initial(), null);
+
+  @override
+  Future<(bool, String?, AppFailure?)> cancelSale({
+    required int saleId,
+    String? reason,
+  }) async =>
+      (true, 'Transaksi berhasil dibatalkan', null);
 }
 
 void main() {

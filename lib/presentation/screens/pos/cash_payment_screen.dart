@@ -16,7 +16,12 @@ import 'package:pos_apps_umkm/presentation/screens/pos/widgets/payment_backgroun
 /// kartu putih elegan di tengah, input nominal uang diterima dengan badge 'Rp',
 /// preview otomatis uang kembalian, tombol Batalkan Pembayaran & Konfirmasi Pembayaran.
 class CashPaymentScreen extends ConsumerStatefulWidget {
-  const CashPaymentScreen({super.key});
+  final CheckoutResult? checkoutResult;
+
+  const CashPaymentScreen({
+    super.key,
+    this.checkoutResult,
+  });
 
   @override
   ConsumerState<CashPaymentScreen> createState() => _CashPaymentScreenState();
@@ -27,10 +32,13 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
   final FocusNode _cashFocusNode = FocusNode();
   bool _isCashFocused = false;
   bool _isProcessing = false;
+  bool _isCancelling = false;
+  CheckoutResult? _checkoutResult;
 
   @override
   void initState() {
     super.initState();
+    _checkoutResult = widget.checkoutResult;
     _cashFocusNode.addListener(_onCashFocusChange);
   }
 
@@ -55,17 +63,35 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
     return int.tryParse(clean) ?? 0;
   }
 
-  void _onCancel() {
-    if (context.canPop()) {
-      context.pop();
-    } else {
-      context.go(AppRoutes.home);
+  Future<void> _onCancel() async {
+    if (_isCancelling || _isProcessing) return;
+    setState(() => _isCancelling = true);
+
+    try {
+      if (_checkoutResult != null) {
+        final saleId = _checkoutResult!.saleId;
+        await ref.read(salesProvider.notifier).cancelSale(
+              saleId,
+              reason: 'Dibatalkan oleh kasir di layar pembayaran Tunai',
+            );
+      }
+    } finally {
+      if (mounted) {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          try {
+            context.go(AppRoutes.home);
+          } catch (_) {}
+          setState(() => _isCancelling = false);
+        }
+      }
     }
   }
 
   Future<void> _confirmCashPayment(int totalTagihan) async {
     final cartItems = ref.read(cartProvider);
-    if (cartItems.isEmpty) {
+    if (cartItems.isEmpty && _checkoutResult == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Keranjang belanja kosong.'),
@@ -101,7 +127,9 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
     final repo = ref.read(posRepositoryProvider);
 
     // 1. Eksekusi checkout transaksi Tunai via API /api/v1/pos/checkout
+    // Mengirim saleId (jika ada) dan cashReceived untuk menyelesaikan transaksi pending
     final (result, failure) = await repo.checkout(
+      saleId: _checkoutResult?.saleId,
       outletId: outletId,
       paymentMethod: 'CASH',
       cashReceived: cashReceived,
@@ -158,13 +186,21 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalTagihan = ref.watch(cartTotalAmountProvider);
+    final cartTotal = ref.watch(cartTotalAmountProvider);
+    final totalTagihan = _checkoutResult?.totalAmount ?? cartTotal;
     final cashReceived = _parsedCashReceived;
     final int change = cashReceived >= totalTagihan ? (cashReceived - totalTagihan) : 0;
     final isMobile = MediaQuery.sizeOf(context).width < 600;
 
-    return PaymentBackgroundScaffold(
-      child: Container(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _onCancel();
+        }
+      },
+      child: PaymentBackgroundScaffold(
+        child: Container(
         width: double.infinity,
         constraints: BoxConstraints(maxWidth: isMobile ? 420 : 480),
         decoration: BoxDecoration(
@@ -398,7 +434,8 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
                   child: SizedBox(
                     height: 44,
                     child: OutlinedButton(
-                      onPressed: _isProcessing ? null : _onCancel,
+                      onPressed:
+                          (_isProcessing || _isCancelling) ? null : _onCancel,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(
                           color: Color(0xFF5247A1),
@@ -411,18 +448,27 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
                         foregroundColor: const Color(0xFF5247A1),
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                       ),
-                      child: const FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          'Batalkan Pembayaran',
-                          style: TextStyle(
-                            fontFamily: 'Open Sans',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: Color(0xFF5247A1),
-                          ),
-                        ),
-                      ),
+                      child: _isCancelling
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFF5247A1),
+                              ),
+                            )
+                          : const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Batalkan Pembayaran',
+                                style: TextStyle(
+                                  fontFamily: 'Open Sans',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: Color(0xFF5247A1),
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                 ),
@@ -476,6 +522,7 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
