@@ -80,17 +80,29 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.paymentCash,
         name: 'paymentCash',
-        builder: (context, state) => const CashPaymentScreen(),
+        pageBuilder: (context, state) => _buildSlideUpPage(
+          context: context,
+          state: state,
+          child: const CashPaymentScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.paymentQris,
         name: 'paymentQris',
-        builder: (context, state) => const QrisPaymentScreen(),
+        pageBuilder: (context, state) => _buildSlideUpPage(
+          context: context,
+          state: state,
+          child: const QrisPaymentScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.payment,
         name: 'payment',
-        builder: (context, state) => const PaymentScreen(),
+        pageBuilder: (context, state) => _buildSlideUpPage(
+          context: context,
+          state: state,
+          child: const PaymentScreen(),
+        ),
       ),
       GoRoute(
         path: AppRoutes.paymentSuccess,
@@ -113,3 +125,38 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+/// Helper untuk membuat transisi halaman geser mulus dari bawah ke atas (Slide up from bottom).
+Page<dynamic> _buildSlideUpPage({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  final disableAnimations =
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  if (disableAnimations) {
+    return NoTransitionPage(key: state.pageKey, child: child);
+  }
+
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 300),
+    reverseTransitionDuration: const Duration(milliseconds: 250),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0.0, 1.0),
+          end: Offset.zero,
+        ).animate(curvedAnimation),
+        child: child,
+      );
+    },
+  );
+}

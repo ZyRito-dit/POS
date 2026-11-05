@@ -613,24 +613,32 @@ class _TransactionsViewState extends ConsumerState<TransactionsView> {
           Expanded(
             child: sales.isEmpty
                 ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.receipt_long_outlined,
-                          size: 48,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Tidak ada data transaksi yang sesuai.',
-                          style: TextStyle(
-                            fontFamily: 'Open Sans',
-                            color: Color(0xFF64748B),
-                            fontSize: 14,
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.receipt_long_outlined,
+                            size: 36,
+                            color: Colors.grey.shade400,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Tidak ada data transaksi yang sesuai.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Open Sans',
+                              color: Color(0xFF64748B),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   )
                 : ListView.separated(

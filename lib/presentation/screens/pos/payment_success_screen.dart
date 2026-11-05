@@ -126,33 +126,11 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
                 color: Color(0xFF4A409A),
               ),
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 12),
 
-            // 3. Ikon Centang Berhasil dengan Lingkaran Bertingkat (Halo Effect)
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                color: const Color(0xFF5247A1).withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Container(
-                  width: 54,
-                  height: 54,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF5247A1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_rounded,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
+            // 3. Ikon Centang Berhasil dengan Animasi Berkedut & Ripple Halo
+            const AnimatedSuccessCheckmark(),
+            const SizedBox(height: 8),
 
             // 4. Judul Pembayaran Berhasil!
             const Text(
@@ -228,15 +206,17 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
             ),
             const SizedBox(height: 10),
 
-            // Radio Button Opsi Format Struk
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            // Radio Button Opsi Format Struk (Wrap responsif anti-overflow)
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 8,
               children: [
                 _buildFormatRadioOption(
                   label: 'Dengan Total',
                   value: 'A',
                 ),
-                const SizedBox(width: 16),
                 _buildFormatRadioOption(
                   label: 'Tanpa Total',
                   value: 'B',
@@ -407,6 +387,238 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Widget Ikon Centang Sukses dengan Animasi Entrance & Berkedut (Heartbeat Pulse & Expanding Halo Ripple).
+class AnimatedSuccessCheckmark extends StatefulWidget {
+  const AnimatedSuccessCheckmark({super.key});
+
+  @override
+  State<AnimatedSuccessCheckmark> createState() =>
+      _AnimatedSuccessCheckmarkState();
+}
+
+class _AnimatedSuccessCheckmarkState extends State<AnimatedSuccessCheckmark>
+    with TickerProviderStateMixin {
+  late final AnimationController _entranceController;
+  late final Animation<double> _entranceScale;
+  late final Animation<double> _entranceOpacity;
+
+  late final AnimationController _pulseController;
+  late final Animation<double> _heartbeatScale;
+  late final Animation<double> _rippleScale;
+  late final Animation<double> _rippleOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 1. Entrance animation (scale spring pop-in)
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 550),
+    );
+
+    _entranceScale = CurvedAnimation(
+      parent: _entranceController,
+      curve: Curves.easeOutBack,
+    );
+
+    _entranceOpacity = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+    );
+
+    // 2. Pulse / "Berkedut" heartbeat loop (2000ms period)
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    );
+
+    // Double-twitch heartbeat scale (berkedut): rest -> throb 1 -> recoil -> throb 2 -> settle -> rest
+    _heartbeatScale = TweenSequence<double>([
+      // Kedut utama 1
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.14)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 15,
+      ),
+      // Recoil
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.14, end: 0.96)
+            .chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 12,
+      ),
+      // Kedut sekunder 2
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.96, end: 1.08)
+            .chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 15,
+      ),
+      // Settle kembali ke ukuran normal
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.08, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 13,
+      ),
+      // Fase istirahat (pause) sebelum kedutan berikutnya
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.0),
+        weight: 45,
+      ),
+    ]).animate(_pulseController);
+
+    // Gelombang ripple halo membesar saat berkedut
+    _rippleScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.45)
+            .chain(CurveTween(curve: Curves.easeOutQuad)),
+        weight: 45,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.0),
+        weight: 55,
+      ),
+    ]).animate(_pulseController);
+
+    // Opacity gelombang ripple memudar
+    _rippleOpacity = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.35, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 45,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(0.0),
+        weight: 55,
+      ),
+    ]).animate(_pulseController);
+
+    // Jalankan entrance, setelah selesai putar loop animasi berkedut
+    _entranceController.forward().then((_) {
+      if (mounted) {
+        _pulseController.repeat();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // WCAG 2.2 accessibility: jika reduced motion aktif, tampilkan versi statis
+    final disableAnimations =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (disableAnimations) {
+      return _buildStaticBadge();
+    }
+
+    return FadeTransition(
+      opacity: _entranceOpacity,
+      child: ScaleTransition(
+        scale: _entranceScale,
+        child: SizedBox(
+          width: 96,
+          height: 96,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 1. Animated expanding ripple halo
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _rippleScale.value,
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5247A1)
+                            .withValues(alpha: _rippleOpacity.value),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              // 2. Base halo ring
+              Container(
+                width: 76,
+                height: 76,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5247A1).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+              ),
+
+              // 3. Center purple circle with checkmark pulsing ("berkedut")
+              AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _heartbeatScale.value,
+                    child: child,
+                  );
+                },
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF5247A1),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x335247A1),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStaticBadge() {
+    return Container(
+      width: 76,
+      height: 76,
+      decoration: BoxDecoration(
+        color: const Color(0xFF5247A1).withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Container(
+          width: 54,
+          height: 54,
+          decoration: const BoxDecoration(
+            color: Color(0xFF5247A1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_rounded,
+            color: Colors.white,
+            size: 32,
+          ),
         ),
       ),
     );

@@ -439,12 +439,22 @@ void main() {
                 outlets: [outletSudirman],
                 user: const UserProfile(
                   id: 1,
-                  username: 'Samantha Putri',
-                  email: 'samantha@kopikato.com',
+                  username: 'Sekarisma Putri',
+                  email: 'sekarisma@kopikato.com',
                   isActive: true,
                   role: 'CASHIER',
                   outletId: 1,
                 ),
+              ),
+            ),
+            currentUserProvider.overrideWith(
+              (ref) => const UserProfile(
+                id: 1,
+                username: 'Sekarisma Putri',
+                email: 'sekarisma@kopikato.com',
+                isActive: true,
+                role: 'CASHIER',
+                outletId: 1,
               ),
             ),
             posRepositoryProvider.overrideWithValue(_FakePosRepository()),
@@ -464,14 +474,15 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // 1. KatoTopbar displays user name
-        expect(find.text('Samantha Putri'), findsOneWidget);
+        // 1. KatoTopbar displays user name and role
+        expect(find.text('Sekarisma Putri'), findsOneWidget);
+        expect(find.text('Kasir'), findsOneWidget);
 
         // 2. Profile is not a PopupMenuButton and has no Menu Akun tooltip
         expect(find.byTooltip('Menu Akun'), findsNothing);
 
         // 3. Tapping the user name does not show Keluar dari Kasir
-        await tester.tap(find.text('Samantha Putri'));
+        await tester.tap(find.text('Sekarisma Putri'));
         await tester.pumpAndSettle();
 
         expect(find.text('Keluar dari Kasir'), findsNothing);

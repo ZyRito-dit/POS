@@ -31,13 +31,20 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
     final user = ref.watch(currentUserProvider);
     final userName = user?.displayName.isNotEmpty == true
         ? user!.displayName
-        : 'Samantha Putri';
+        : 'Sekarisma Putri';
+    final rawRole = user?.role;
+    final String userRole;
+    if (rawRole != null && rawRole.isNotEmpty) {
+      userRole = rawRole.toUpperCase() == 'CASHIER' ? 'Kasir' : rawRole;
+    } else {
+      userRole = 'Kasir';
+    }
 
     final selectedOutlet = ref.watch(selectedOutletProvider);
     final accessibleOutlets = ref.watch(accessibleOutletsProvider);
     final outletName = selectedOutlet?.name.isNotEmpty == true
         ? selectedOutlet!.name
-        : 'Kopi Kato - Cabang Sudirman';
+        : 'Kato & Co. Sudirman';
     final hasMultipleOutlets = accessibleOutlets.length > 1;
 
     final horizontalPad = isMobile ? 16.0 : 32.0;
@@ -96,48 +103,37 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
                 ),
                 const SizedBox(width: 8),
 
-                // Badge Toko / Outlet (Reaktif terhadap selectedOutletProvider)
+                // Badge Toko / Outlet (Format Figma: height 29, padding 5px 15px, radius 100, background #FFFFFF1A)
                 Flexible(
                   child: InkWell(
                     onTap: hasMultipleOutlets
                         ? () => _showOutletSelector(context, ref)
                         : null,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(100),
                     child: Container(
-                      height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      height: 29,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isMobile ? 10 : 15,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
+                        color: const Color(0x1AFFFFFF),
+                        borderRadius: BorderRadius.circular(100),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          SvgPicture.asset(
-                            'assets/Icons_SVG/icon_toko.svg',
-                            width: 20,
-                            height: 20,
-                            colorFilter: const ColorFilter.mode(
-                              Color(0xFF5247A1),
-                              BlendMode.srcIn,
-                            ),
-                            errorBuilder: (context, error, stackTrace) => const Icon(
-                              Icons.storefront_outlined,
-                              size: 20,
-                              color: Color(0xFF5247A1),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
                           Flexible(
                             child: Text(
                               outletName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'Open Sans',
-                                fontWeight: FontWeight.w400,
-                                fontSize: 14,
-                                color: Color(0xFF5247A1),
+                                fontWeight: FontWeight.w700,
+                                fontSize: isMobile ? 13 : 14,
+                                color: Colors.white,
                                 letterSpacing: 0,
                                 height: 1.0,
                               ),
@@ -147,8 +143,8 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
                             const SizedBox(width: 4),
                             const Icon(
                               Icons.keyboard_arrow_down_rounded,
-                              size: 18,
-                              color: Color(0xFF5247A1),
+                              size: 16,
+                              color: Colors.white,
                             ),
                           ],
                         ],
@@ -156,7 +152,7 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: isMobile ? 6 : 10),
 
                 // Status Online Pill (Dipindah ke samping kanan nama toko)
                 _buildOnlineStatusPill(isMobile),
@@ -172,68 +168,63 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. Icon Notifikasi (40x40, padding 5px, radius 8px)
+              // 1. Icon Notifikasi (Lonceng Putih)
               Container(
-                width: 40,
-                height: 40,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                width: isMobile ? 32 : 36,
+                height: isMobile ? 32 : 36,
                 alignment: Alignment.center,
                 child: SvgPicture.asset(
                   'assets/Icons_SVG/Notifications.svg',
-                  width: 22,
-                  height: 22,
+                  width: isMobile ? 20 : 22,
+                  height: isMobile ? 20 : 22,
                   colorFilter: const ColorFilter.mode(
                     Colors.white,
                     BlendMode.srcIn,
                   ),
-                  errorBuilder: (context, error, stackTrace) => const Icon(
+                  errorBuilder: (context, error, stackTrace) => Icon(
                     Icons.notifications_none_rounded,
-                    size: 22,
+                    size: isMobile ? 20 : 22,
                     color: Colors.white,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: isMobile ? 8 : 12),
 
-              // 2. User Avatar & Nama Pengguna (Samantha Putri) - Tampilan statis profil kasir tanpa popup menu
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Kotak Ikon User: 30x30, background putih, radius 8px
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: SvgPicture.asset(
-                      'assets/Icons_SVG/icon_user.svg',
-                      width: 16,
-                      height: 16,
-                      colorFilter: const ColorFilter.mode(
-                        Color(0xFF5247A1),
-                        BlendMode.srcIn,
-                      ),
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(
-                        Icons.person_rounded,
-                        size: 16,
-                        color: Color(0xFF5247A1),
-                      ),
-                    ),
+              // 2. User Avatar Box (Kotak Putih dengan Ikon User Ungu)
+              Container(
+                width: isMobile ? 32 : 36,
+                height: isMobile ? 32 : 36,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  'assets/Icons_SVG/icon_user.svg',
+                  width: isMobile ? 16 : 18,
+                  height: isMobile ? 16 : 18,
+                  colorFilter: const ColorFilter.mode(
+                    Color(0xFF5247A1),
+                    BlendMode.srcIn,
                   ),
-                  if (!isMobile) ...[
-                    const SizedBox(width: 8),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 120),
-                      child: Text(
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.person_outline_rounded,
+                    size: isMobile ? 18 : 20,
+                    color: const Color(0xFF5247A1),
+                  ),
+                ),
+              ),
+              if (!isMobile) ...[
+                const SizedBox(width: 10),
+
+                // 3. User Name & Role (Sekarisma Putri / Kasir)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 140),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
                         userName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -243,13 +234,27 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
                           fontSize: 14,
                           color: Colors.white,
                           letterSpacing: 0,
-                          height: 1.0,
+                          height: 1.1,
                         ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
+                      const SizedBox(height: 2),
+                      Text(
+                        userRole,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Open Sans',
+                          fontWeight: FontWeight.w400,
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.9),
+                          letterSpacing: 0,
+                          height: 1.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -258,45 +263,12 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
   }
 
   Widget _buildOnlineStatusPill(bool isMobile) {
-    if (isMobile) {
-      return Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: const BoxDecoration(
-                color: Color(0xFF28A555),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'Online',
-              style: TextStyle(
-                fontFamily: 'Open Sans',
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-                color: Color(0xFF28A555),
-                letterSpacing: 0,
-                height: 1.0,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      height: 29,
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 8 : 12,
+        vertical: 5,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(100),
@@ -306,21 +278,21 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 8,
-            height: 8,
+            width: 7,
+            height: 7,
             decoration: const BoxDecoration(
               color: Color(0xFF28A555),
               shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 6),
-          const Text(
+          const SizedBox(width: 5),
+          Text(
             'Online',
             style: TextStyle(
               fontFamily: 'Open Sans',
               fontWeight: FontWeight.w700,
-              fontSize: 12,
-              color: Color(0xFF28A555),
+              fontSize: isMobile ? 11 : 12,
+              color: const Color(0xFF28A555),
               letterSpacing: 0,
               height: 1.0,
             ),

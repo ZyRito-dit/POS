@@ -441,12 +441,8 @@ class _KatoCatalogViewState extends ConsumerState<KatoCatalogView> {
                   ),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Gambar Produk Asli atau Placeholder Standar No Image
-                    if (hasImage)
-                      Image.network(
+                child: hasImage
+                    ? Image.network(
                         product.imageUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
@@ -465,66 +461,69 @@ class _KatoCatalogViewState extends ConsumerState<KatoCatalogView> {
                           );
                         },
                       )
-                    else
-                      const ProductNoImagePlaceholder(iconSize: 34),
-
-                    // Badge Kuantitas / Stok di pojok kanan bawah gambar (seperti angka 20 di referensi)
-                    Positioned(
-                      bottom: 6,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2.5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: remainingStock > 0
-                              ? const Color(0xFF5247A1)
-                              : const Color(0xFF9E9E9E),
-                          borderRadius: BorderRadius.circular(100),
-                        ),
-                        constraints:
-                            const BoxConstraints(minWidth: 20, minHeight: 20),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '$remainingStock',
-                          style: const TextStyle(
-                            fontFamily: 'Open Sans',
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10.5,
-                            color: Colors.white,
-                            height: 1.0,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                    : const ProductNoImagePlaceholder(iconSize: 34),
               ),
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
 
-            // Nama Produk (Ketinggian Konsisten 32px 2 Baris agar Semua Card Sejajar)
+            // Baris Nama Produk & Badge Stok (Sejajar dengan teks nama produk baris pertama)
             SizedBox(
-              height: 32,
-              child: Text(
-                product.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Open Sans',
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12.5,
-                  color: Color(0xFF1E293B),
-                  height: 1.2,
-                ),
+              height: 34,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: 'Open Sans',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                        color: Color(0xFF1E293B),
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    height: 18,
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 18,
+                      maxHeight: 18,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5.5,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: remainingStock > 0
+                          ? const Color(0xFF5247A1)
+                          : const Color(0xFF94A3B8),
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$remainingStock',
+                      style: const TextStyle(
+                        fontFamily: 'Open Sans',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                        color: Colors.white,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 4),
 
-            // Badge Kategori & Kode SKU (Tinggi Seragam 20px)
+            // Badge Kategori (Tinggi Seragam 20px)
             SizedBox(
               height: 20,
               child: Row(
@@ -532,12 +531,12 @@ class _KatoCatalogViewState extends ConsumerState<KatoCatalogView> {
                   Flexible(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
+                        horizontal: 8,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
+                        color: const Color(0xFFF1F0FA),
+                        borderRadius: BorderRadius.circular(100),
                       ),
                       child: Text(
                         product.categoryName.isNotEmpty
@@ -547,29 +546,30 @@ class _KatoCatalogViewState extends ConsumerState<KatoCatalogView> {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: 'Open Sans',
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           fontSize: 10,
-                          color: Color(0xFF64748B),
+                          color: Color(0xFF5247A1),
                         ),
                       ),
                     ),
                   ),
-                  if (product.sku.isNotEmpty) ...[
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        'Kode: ${product.sku}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Open Sans',
-                          fontWeight: FontWeight.w400,
-                          fontSize: 9.5,
-                          color: Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ),
-                  ],
+                  // Kode produk dinonaktifkan dari tampilan card produk
+                  // if (product.sku.isNotEmpty) ...[
+                  //   const SizedBox(width: 4),
+                  //   Flexible(
+                  //     child: Text(
+                  //       'Kode: ${product.sku}',
+                  //       maxLines: 1,
+                  //       overflow: TextOverflow.ellipsis,
+                  //       style: const TextStyle(
+                  //         fontFamily: 'Open Sans',
+                  //         fontWeight: FontWeight.w400,
+                  //         fontSize: 9.5,
+                  //         color: Color(0xFF94A3B8),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ],
                 ],
               ),
             ),

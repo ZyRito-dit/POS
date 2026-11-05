@@ -184,7 +184,8 @@ void main() {
 
     // 1. Verifikasi produk tampil dengan stok awal 20 pada badge ungu
     expect(find.text('Coleslaw Salad'), findsOneWidget);
-    expect(find.text('Kode: P001'), findsOneWidget);
+    // Kode produk dinonaktifkan dari tampilan card produk
+    // expect(find.text('Kode: P001'), findsOneWidget);
     expect(find.text('20'), findsOneWidget);
 
     // 2. Klik produk untuk menambahkan ke keranjang -> stok tersisa berkurang menjadi 19
