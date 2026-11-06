@@ -63,6 +63,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     });
 
+    final sessionInit = ref.watch(sessionInitProvider);
+    if (sessionInit.isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.asset(
+                  'assets/Logo/logo_kato_pos.png',
+                  width: 72,
+                  height: 72,
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.store_rounded,
+                    size: 64,
+                    color: Color(0xFF5247A1),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Color(0xFF5247A1),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final loginState = ref.watch(loginProvider);
     final isLoading = loginState is LoginLoading;
     final errorMessage =

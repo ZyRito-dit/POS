@@ -38,10 +38,17 @@ class AuthRepositoryImpl implements AuthRepository {
       final dto = TokenResponseDto.fromJson(rawData);
 
       // Persist token to secure storage after successful authentication
-      await Future.wait([
+      final writes = <Future<void>>[
         _storage.write(key: AppConstants.tokenKey, value: dto.accessToken),
         _storage.write(key: AppConstants.tokenTypeKey, value: dto.tokenType),
-      ]);
+      ];
+      if (dto.refreshToken != null && dto.refreshToken!.isNotEmpty) {
+        writes.add(_storage.write(
+          key: AppConstants.refreshTokenKey,
+          value: dto.refreshToken,
+        ));
+      }
+      await Future.wait(writes);
 
       UserProfile? userProfile;
       if (dto.user != null) {
@@ -146,6 +153,7 @@ class AuthRepositoryImpl implements AuthRepository {
     await Future.wait([
       _storage.delete(key: AppConstants.tokenKey),
       _storage.delete(key: AppConstants.tokenTypeKey),
+      _storage.delete(key: AppConstants.refreshTokenKey),
     ]);
   }
 
@@ -153,6 +161,74 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> hasValidSession() async {
     final token = await _storage.read(key: AppConstants.tokenKey);
     return token != null && token.isNotEmpty;
+  }
+
+  @override
+  Future<(AuthToken?, AppFailure?)> refreshToken() async {
+    final storedRefreshToken =
+        await _storage.read(key: AppConstants.refreshTokenKey);
+    if (storedRefreshToken == null || storedRefreshToken.isEmpty) {
+      return (
+        null,
+        const UnauthorizedFailure('Sesi telah berakhir, silakan login kembali.')
+      );
+    }
+
+    try {
+      final response = await _dio.post(
+        AppConstants.refreshTokenEndpoint,
+        data: {'refresh_token': storedRefreshToken},
+        options: Options(headers: {'Authorization': null}),
+      );
+
+      final rawData = response.data;
+      if (rawData is! Map<String, dynamic>) {
+        return (null, const ServerFailure('Format respon dari server tidak valid.'));
+      }
+
+      final dto = TokenResponseDto.fromJson(rawData);
+      final writes = <Future<void>>[
+        _storage.write(key: AppConstants.tokenKey, value: dto.accessToken),
+        _storage.write(key: AppConstants.tokenTypeKey, value: dto.tokenType),
+      ];
+      if (dto.refreshToken != null && dto.refreshToken!.isNotEmpty) {
+        writes.add(_storage.write(
+          key: AppConstants.refreshTokenKey,
+          value: dto.refreshToken,
+        ));
+      }
+      await Future.wait(writes);
+
+      UserProfile? userProfile;
+      if (dto.user != null) {
+        userProfile = UserProfile(
+          id: dto.user!.id,
+          username: dto.user!.name,
+          email: null,
+          fullName: dto.user!.name,
+          isActive: true,
+          role: dto.user!.role,
+          tenantId: dto.user!.tenantId,
+          outletId: dto.user!.outletId,
+        );
+      }
+
+      final token = AuthToken(
+        accessToken: dto.accessToken,
+        tokenType: dto.tokenType,
+        refreshToken: dto.refreshToken ?? storedRefreshToken,
+        expiresIn: dto.expiresIn,
+        user: userProfile,
+      );
+      return (token, null);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 400) {
+        await logout();
+      }
+      return (null, mapDioExceptionToFailure(e));
+    } catch (_) {
+      return (null, const UnknownFailure());
+    }
   }
 
   UserProfile _mapDtoToProfile(UserProfileDto dto) => UserProfile(

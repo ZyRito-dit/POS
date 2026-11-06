@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pos_apps_umkm/core/router/app_router.dart';
 import 'package:pos_apps_umkm/core/theme/app_theme.dart';
+import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
 
 /// Konfigurasi Emulator Layar (DevicePreview):
 /// - Set ke `false` untuk MEMATIKAN emulator (tampilan layar penuh biasa).
@@ -34,6 +35,9 @@ class NexSellApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Memastikan auto-login / pemulihan sesi dari secure storage dijalankan saat aplikasi dimulai
+    ref.watch(sessionInitProvider);
+
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isDark = themeMode == ThemeMode.dark;

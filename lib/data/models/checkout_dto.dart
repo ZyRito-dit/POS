@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:pos_apps_umkm/core/utils/formatters.dart';
 import 'package:pos_apps_umkm/domain/entities/pos_entities.dart';
 
 /// DTO untuk item pesanan checkout kasir (`#/definitions/service.CheckoutItemRequest`).
@@ -113,9 +114,7 @@ class CheckoutResponseDto extends Equatable {
       paymentStatus: json['payment_status'] as String? ?? 'PAID',
       status: json['status'] as String? ?? 'COMPLETED',
       receiptFormat: json['receipt_format'] as String? ?? 'A',
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String) ?? DateTime.now()
-          : DateTime.now(),
+      createdAt: AppFormatters.parseServerDateTime(json['created_at']),
     );
   }
 
@@ -242,7 +241,7 @@ class InitiateQrisResponseDto extends Equatable {
       qrPayload: json['qr_payload'] as String?,
       qrUrl: json['qr_url'] as String?,
       expiresAt: json['expires_at'] != null
-          ? DateTime.tryParse(json['expires_at'] as String)
+          ? AppFormatters.parseServerDateTime(json['expires_at'])
           : null,
       providerReference: json['provider_reference'] as String?,
     );

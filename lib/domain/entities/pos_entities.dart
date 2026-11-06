@@ -451,8 +451,9 @@ class PosConnectivity extends Equatable {
       cashierName: json['cashier_name'] as String? ?? '',
       outletId: json['outlet_id'] as int? ?? 0,
       outletName: json['outlet_name'] as String? ?? '',
-      serverTime: DateTime.tryParse(json['server_time'] as String? ?? '') ??
-          DateTime.now(),
+      serverTime:
+          DateTime.tryParse(json['server_time'] as String? ?? '')?.toLocal() ??
+              DateTime.now(),
       friendlyMessage: json['friendly_message'] as String? ??
           (json['is_online'] == false
               ? 'Perangkat kasir offline'

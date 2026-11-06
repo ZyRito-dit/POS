@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pos_apps_umkm/core/errors/app_failure.dart';
 import 'package:pos_apps_umkm/data/repositories/auth_repository_impl.dart';
 import 'package:pos_apps_umkm/domain/entities/auth_entity.dart';
 import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
@@ -241,56 +242,94 @@ void switchActiveOutlet(WidgetRef ref, Outlet newOutlet) {
   ref.read(posProductsProvider.notifier).fetchCatalog(outletId: newOutlet.id);
 }
 
-/// Session init provider checking stored tokens.
+/// Session init provider checking stored tokens and restoring authenticated session.
 final sessionInitProvider = FutureProvider<bool>((ref) async {
   final authRepo = ref.read(authRepositoryProvider);
-  final hasSession = await authRepo.hasValidSession();
-  ref.read(isAuthenticatedSessionProvider.notifier).state = hasSession;
-
-  if (hasSession) {
-    final (profile, _) = await authRepo.getCurrentUser();
-    if (profile != null) {
-      ref.read(currentUserProvider.notifier).state = profile;
-    }
-
-    final (outlets, _) = await authRepo.getAccessibleOutlets();
-    final outletList = outlets ?? const <Outlet>[];
-    ref.read(accessibleOutletsProvider.notifier).state = outletList;
-
-    Outlet? activeOutlet;
-    final currentProfile = ref.read(currentUserProvider);
-    if (outletList.isNotEmpty) {
-      if (currentProfile?.outletId != null) {
-        activeOutlet = outletList.firstWhere(
-          (o) => o.id == currentProfile!.outletId,
-          orElse: () => outletList.first,
-        );
-      } else {
-        activeOutlet = outletList.first;
-      }
-    } else {
-      activeOutlet = const Outlet(
-        id: 1,
-        tenantId: 1,
-        code: 'OUT-01',
-        name: 'Kopi Kato - Cabang Sudirman',
-        address: 'Gedung Plaza Sudirman Lt. Dasar, Jakarta',
-        phone: '081234567891',
-        timezone: 'Asia/Jakarta',
-        status: 'ACTIVE',
-      );
-      ref.read(accessibleOutletsProvider.notifier).state = [activeOutlet];
-    }
-
-    if (currentProfile != null &&
-        (currentProfile.outletId == null ||
-            currentProfile.outletId != activeOutlet.id)) {
-      ref.read(currentUserProvider.notifier).state =
-          currentProfile.copyWith(outletId: activeOutlet.id);
-    }
-    ref.read(selectedOutletProvider.notifier).state = activeOutlet;
-    ref.read(posProductsProvider.notifier).fetchCatalog(outletId: activeOutlet.id);
+  final hasStoredToken = await authRepo.hasValidSession();
+  if (!hasStoredToken) {
+    ref.read(isAuthenticatedSessionProvider.notifier).state = false;
+    return false;
   }
 
-  return hasSession;
+  // Coba ambil profil pengguna dengan token yang tersimpan di storage
+  var (profile, failure) = await authRepo.getCurrentUser();
+
+  // Jika token expired (401 / UnauthorizedFailure), lakukan refresh token via /api/v1/auth/refresh
+  if (profile == null &&
+      (failure is UnauthorizedFailure ||
+          (failure != null &&
+              failure.message.toLowerCase().contains('unauthorized')))) {
+    final (refreshedToken, _) = await authRepo.refreshToken();
+    if (refreshedToken != null) {
+      final (retryProfile, _) = await authRepo.getCurrentUser();
+      profile = retryProfile ?? refreshedToken.user;
+    } else {
+      // Refresh token juga gagal/expired -> sesi berakhir
+      await authRepo.logout();
+      ref.read(isAuthenticatedSessionProvider.notifier).state = false;
+      return false;
+    }
+  }
+
+  // Jika profil gagal didapatkan karena unauthorized
+  if (profile == null &&
+      failure != null &&
+      failure.message.toLowerCase().contains('unauthorized')) {
+    await authRepo.logout();
+    ref.read(isAuthenticatedSessionProvider.notifier).state = false;
+    return false;
+  }
+
+  // Jika profil masih null (misalnya server offline saat buka aplikasi POS), gunakan fallback profil yang aman
+  profile ??= ref.read(currentUserProvider) ??
+      const UserProfile(
+        id: 1,
+        username: 'kasir',
+        fullName: 'Kasir Kato POS',
+        isActive: true,
+        role: 'CASHIER',
+      );
+
+  ref.read(currentUserProvider.notifier).state = profile;
+
+  final (outlets, _) = await authRepo.getAccessibleOutlets();
+  final outletList = outlets ?? const <Outlet>[];
+  ref.read(accessibleOutletsProvider.notifier).state = outletList;
+
+  Outlet? activeOutlet;
+  final currentProfile = ref.read(currentUserProvider);
+  if (outletList.isNotEmpty) {
+    if (currentProfile?.outletId != null) {
+      activeOutlet = outletList.firstWhere(
+        (o) => o.id == currentProfile!.outletId,
+        orElse: () => outletList.first,
+      );
+    } else {
+      activeOutlet = outletList.first;
+    }
+  } else {
+    activeOutlet = const Outlet(
+      id: 1,
+      tenantId: 1,
+      code: 'OUT-01',
+      name: 'Kopi Kato - Cabang Sudirman',
+      address: 'Gedung Plaza Sudirman Lt. Dasar, Jakarta',
+      phone: '081234567891',
+      timezone: 'Asia/Jakarta',
+      status: 'ACTIVE',
+    );
+    ref.read(accessibleOutletsProvider.notifier).state = [activeOutlet];
+  }
+
+  if (currentProfile != null &&
+      (currentProfile.outletId == null ||
+          currentProfile.outletId != activeOutlet.id)) {
+    ref.read(currentUserProvider.notifier).state =
+        currentProfile.copyWith(outletId: activeOutlet.id);
+  }
+  ref.read(selectedOutletProvider.notifier).state = activeOutlet;
+  ref.read(posProductsProvider.notifier).fetchCatalog(outletId: activeOutlet.id);
+  ref.read(isAuthenticatedSessionProvider.notifier).state = true;
+
+  return true;
 });

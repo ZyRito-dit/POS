@@ -9,6 +9,7 @@ class AppConstants {
 
   // Auth endpoints (KatoPOS Backend API)
   static const String loginEndpoint = '/auth/login';
+  static const String refreshTokenEndpoint = '/auth/refresh';
   static const String meEndpoint = '/auth/me';
   static const String meOutletsEndpoint = '/auth/me/outlets';
   static const String createUserEndpoint = '/auth/users';
@@ -34,6 +35,8 @@ class AppConstants {
   // Token & Session storage keys
   static const String tokenKey = 'nexsell_access_token';
   static const String tokenTypeKey = 'nexsell_token_type';
+  static const String refreshTokenKey = 'nexsell_refresh_token';
+  static const String userProfileKey = 'nexsell_user_profile';
   static const String activeOutletIdKey = 'nexsell_active_outlet_id';
   static const String activeOutletNameKey = 'nexsell_active_outlet_name';
 

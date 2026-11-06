@@ -30,4 +30,7 @@ abstract interface class AuthRepository {
 
   /// Returns true if a valid token exists in secure storage.
   Future<bool> hasValidSession();
+
+  /// Renews an expired access token using the stored refresh token (`/api/v1/auth/refresh`).
+  Future<(AuthToken?, AppFailure?)> refreshToken();
 }

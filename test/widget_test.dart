@@ -75,6 +75,9 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> logout() async {}
 
   @override
+  Future<(AuthToken?, AppFailure?)> refreshToken() async => (null, null);
+
+  @override
   Future<(UserProfile?, AppFailure?)> register({
     required String username,
     required String password,
@@ -183,7 +186,7 @@ class FakePosRepository implements PosRepository {
         taxAmount: 0,
         totalAmount: finalTotal,
         paidAmount: cashReceived ?? 0,
-        changeAmount: isPaid ? (cashReceived! - finalTotal) : 0,
+        changeAmount: isPaid ? (cashReceived - finalTotal) : 0,
         paymentMethod: paymentMethod,
         paymentStatus: isPaid ? 'PAID' : 'PENDING',
         status: isPaid ? 'COMPLETED' : 'PENDING',

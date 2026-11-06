@@ -109,7 +109,7 @@ class _FakeTestPosRepository implements PosRepository {
         taxAmount: 0,
         totalAmount: total > 0 ? total : 18000,
         paidAmount: cashReceived ?? 0,
-        changeAmount: isPaid ? (cashReceived! - (total > 0 ? total : 18000)) : 0,
+        changeAmount: isPaid ? (cashReceived - (total > 0 ? total : 18000)) : 0,
         paymentMethod: paymentMethod,
         paymentStatus: isPaid ? 'PAID' : 'PENDING',
         status: isPaid ? 'COMPLETED' : 'PENDING',

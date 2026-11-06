@@ -52,6 +52,9 @@ class _FakeMultiOutletAuthRepository implements AuthRepository {
   Future<void> logout() async {}
 
   @override
+  Future<(AuthToken?, AppFailure?)> refreshToken() async => (null, null);
+
+  @override
   Future<(UserProfile?, AppFailure?)> register({
     required String username,
     required String password,
