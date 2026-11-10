@@ -5,6 +5,151 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:pos_apps_umkm/core/constants/app_constants.dart';
 import 'package:pos_apps_umkm/core/utils/debug_logger.dart';
+import 'package:pos_apps_umkm/data/models/auth_dto.dart';
+
+/// Enterprise Silent 401 Auto-Refresh & Retry Interceptor.
+///
+/// 1. Injects Bearer token from secure storage into headers of all outgoing requests.
+/// 2. Intercepts HTTP 401 Unauthorized errors and silently calls /api/v1/auth/refresh
+///    to obtain a fresh access token without disrupting active cashier operations.
+/// 3. Retries the failed request transparently with the new access token.
+/// 4. Implements concurrency locking so simultaneous 401s share a single refresh cycle.
+/// 5. Protects against infinite retry loops via `is_retry` metadata check.
+class AuthTokenInterceptor extends Interceptor {
+  final Dio _dio;
+  final FlutterSecureStorage _storage;
+  final Dio _refreshDio;
+  Future<String?>? _refreshFuture;
+
+  AuthTokenInterceptor({
+    required Dio dio,
+    required FlutterSecureStorage storage,
+    Dio? refreshDio,
+  })  : _dio = dio,
+        _storage = storage,
+        _refreshDio = refreshDio ??
+            Dio(
+              BaseOptions(
+                baseUrl: AppConstants.apiBaseUrl,
+                connectTimeout: AppConstants.connectTimeout,
+                receiveTimeout: AppConstants.receiveTimeout,
+                headers: {'Content-Type': 'application/json'},
+              ),
+            );
+
+  @override
+  void onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    // Attach Bearer token if not explicitly provided or suppressed
+    if (!options.headers.containsKey('Authorization') ||
+        options.headers['Authorization'] == null) {
+      final token = await _storage.read(key: AppConstants.tokenKey);
+      if (token != null && token.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+    }
+    handler.next(options);
+  }
+
+  @override
+  void onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final response = err.response;
+    final requestOptions = err.requestOptions;
+    final path = requestOptions.path;
+
+    // Filter out non-401s, auth routes, and already retried requests
+    final isAuthEndpoint = path.contains(AppConstants.refreshTokenEndpoint) ||
+        path.contains(AppConstants.loginEndpoint);
+    final isAlreadyRetried = requestOptions.extra['is_retry'] == true;
+
+    if (response?.statusCode == 401 && !isAuthEndpoint && !isAlreadyRetried) {
+      if (kDebugMode) {
+        debugPrint(
+          '[AuthTokenInterceptor] 401 Unauthorized on $path. Triggering silent token renewal...',
+        );
+      }
+
+      try {
+        final currentStoredToken =
+            await _storage.read(key: AppConstants.tokenKey);
+        final headerAuth =
+            requestOptions.headers['Authorization'] as String?;
+        final failedToken = headerAuth?.replaceFirst('Bearer ', '');
+
+        String? tokenToUse;
+        // If storage already contains a different/newer token than what failed,
+        // another concurrent request has already refreshed it.
+        if (currentStoredToken != null &&
+            currentStoredToken.isNotEmpty &&
+            currentStoredToken != failedToken) {
+          tokenToUse = currentStoredToken;
+        } else {
+          // Serialize concurrent refresh requests
+          _refreshFuture ??= _performTokenRefresh();
+          tokenToUse = await _refreshFuture;
+        }
+
+        if (tokenToUse != null && tokenToUse.isNotEmpty) {
+          requestOptions.headers['Authorization'] = 'Bearer $tokenToUse';
+          requestOptions.extra['is_retry'] = true;
+
+          final retryResponse = await _dio.fetch(requestOptions);
+          return handler.resolve(retryResponse);
+        }
+      } catch (retryError) {
+        if (retryError is DioException) {
+          return handler.next(retryError);
+        }
+      } finally {
+        _refreshFuture = null;
+      }
+    }
+
+    return handler.next(err);
+  }
+
+  Future<String?> _performTokenRefresh() async {
+    try {
+      final storedRefreshToken =
+          await _storage.read(key: AppConstants.refreshTokenKey);
+      if (storedRefreshToken == null || storedRefreshToken.isEmpty) {
+        return null;
+      }
+
+      final response = await _refreshDio.post(
+        AppConstants.refreshTokenEndpoint,
+        data: {'refresh_token': storedRefreshToken},
+      );
+
+      final rawData = response.data;
+      if (rawData is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final dto = TokenResponseDto.fromJson(rawData);
+      final writes = <Future<void>>[
+        _storage.write(key: AppConstants.tokenKey, value: dto.accessToken),
+        _storage.write(key: AppConstants.tokenTypeKey, value: dto.tokenType),
+      ];
+      if (dto.refreshToken != null && dto.refreshToken!.isNotEmpty) {
+        writes.add(_storage.write(
+          key: AppConstants.refreshTokenKey,
+          value: dto.refreshToken,
+        ));
+      }
+      await Future.wait(writes);
+
+      return dto.accessToken;
+    } catch (_) {
+      return null;
+    }
+  }
+}
 
 /// Provides a configured [Dio] instance with auth interceptor injected.
 /// This is a lazy singleton - created once per app lifecycle.
@@ -130,19 +275,11 @@ final dioProvider = Provider<Dio>((ref) {
     ),
   );
 
-  // Attach Bearer token from secure storage to every authenticated request.
+  // Attach Silent 401 Auto-Refresh & Retry Interceptor
   dio.interceptors.add(
-    InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await storage.read(key: AppConstants.tokenKey);
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        handler.next(error);
-      },
+    AuthTokenInterceptor(
+      dio: dio,
+      storage: storage,
     ),
   );
 
