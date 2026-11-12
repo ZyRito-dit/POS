@@ -223,5 +223,63 @@ void main() {
       expect(refreshRequestCount, 1);
       expect(catalogRequestCount, 2, reason: 'Initial request + 1 retry');
     });
+
+    test(
+        '401 with missing tenant_id claim does NOT trigger silent refresh loop',
+        () async {
+      FlutterSecureStorage.setMockInitialValues({
+        AppConstants.tokenKey: 'valid_token_missing_claim',
+        AppConstants.refreshTokenKey: 'valid_refresh_token',
+      });
+      const storage = FlutterSecureStorage();
+      int refreshRequestCount = 0;
+      int notificationsRequestCount = 0;
+
+      final mainDio = Dio(BaseOptions(baseUrl: AppConstants.apiBaseUrl));
+      final refreshDio = Dio(BaseOptions(baseUrl: AppConstants.apiBaseUrl));
+
+      mainDio.httpClientAdapter = _MockAdapter((options) async {
+        notificationsRequestCount++;
+        return ResponseBody.fromString(
+          jsonEncode({
+            'success': false,
+            'message': 'Tenant ID diperlukan dari token otentikasi',
+            'error': {'code': 'UNAUTHORIZED'},
+          }),
+          401,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      });
+
+      refreshDio.httpClientAdapter = _MockAdapter((options) async {
+        refreshRequestCount++;
+        return ResponseBody.fromString('{}', 200);
+      });
+
+      final interceptor = AuthTokenInterceptor(
+        dio: mainDio,
+        storage: storage,
+        refreshDio: refreshDio,
+      );
+      mainDio.interceptors.add(interceptor);
+
+      await expectLater(
+        mainDio.get(AppConstants.notificationsEndpoint),
+        throwsA(isA<DioException>().having(
+          (e) => e.response?.statusCode,
+          'statusCode',
+          401,
+        )),
+      );
+
+      // Invariant: Missing claims on the server cannot be solved by token renewal.
+      // Zero token refresh calls should be initiated.
+      expect(refreshRequestCount, 0,
+          reason: 'Missing tenant claim must not trigger refresh loop');
+      expect(notificationsRequestCount, 1,
+          reason: 'Request should fail immediately without retry');
+    });
   });
 }

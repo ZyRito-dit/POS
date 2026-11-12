@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pos_apps_umkm/core/constants/app_constants.dart';
 import 'package:pos_apps_umkm/core/errors/app_failure.dart';
 import 'package:pos_apps_umkm/data/models/pos_catalog_dto.dart';
 import 'package:pos_apps_umkm/data/repositories/pos_repository_impl.dart';
@@ -78,6 +79,22 @@ class _FakePosCatalogRepository implements PosRepository {
     String? reason,
   }) async =>
       (true, 'Transaksi berhasil dibatalkan', null);
+
+  @override
+  Future<((List<SystemNotification>, int)?, AppFailure?)> getNotifications({
+    bool? isRead,
+    int page = 1,
+    int perPage = 20,
+  }) async =>
+      ((<SystemNotification>[], 0), null);
+
+  @override
+  Future<(bool, AppFailure?)> markNotificationAsRead({required int id}) async =>
+      (true, null);
+
+  @override
+  Future<(bool, AppFailure?)> markAllNotificationsAsRead() async =>
+      (true, null);
 }
 
 void main() {
@@ -108,20 +125,21 @@ void main() {
 
     test('normalizeImageUrl replaces localhost and 127.0.0.1 MinIO URLs with backend host', () {
       const localhostUrl = 'http://localhost:9000/katopos/products/kopi.jpg';
+      final host = Uri.parse(AppConstants.baseUrl).host;
       final normalized = PosCatalogItemDto.normalizeImageUrl(localhostUrl);
-      expect(normalized, contains('157.20.32.181:9000'));
+      expect(normalized, contains('$host:9000'));
       expect(normalized, isNot(contains('localhost')));
 
       const ipUrl = 'http://127.0.0.1:9000/katopos/products/kopi.jpg';
       final normalizedIp = PosCatalogItemDto.normalizeImageUrl(ipUrl);
-      expect(normalizedIp, contains('157.20.32.181:9000'));
+      expect(normalizedIp, contains('$host:9000'));
       expect(normalizedIp, isNot(contains('127.0.0.1')));
     });
 
     test('normalizeImageUrl prefixes relative upload paths with backend origin', () {
       const relativePath = '/uploads/products/macchiato.png';
       final normalized = PosCatalogItemDto.normalizeImageUrl(relativePath);
-      expect(normalized, startsWith('http://157.20.32.181:8006'));
+      expect(normalized, startsWith(AppConstants.baseUrl));
       expect(normalized, endsWith('/uploads/products/macchiato.png'));
     });
 

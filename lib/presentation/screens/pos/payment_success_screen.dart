@@ -270,7 +270,12 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
                   child: SizedBox(
                     height: 44,
                     child: OutlinedButton(
-                      onPressed: () => context.go(AppRoutes.home),
+                      onPressed: () {
+                        ref
+                            .read(notificationsProvider.notifier)
+                            .fetchNotifications();
+                        context.go(AppRoutes.home);
+                      },
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(
                           color: Color(0xFF5247A1),

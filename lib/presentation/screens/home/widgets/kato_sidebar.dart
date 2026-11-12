@@ -19,9 +19,10 @@ class SidebarMenuItem {
   });
 }
 
-/// Daftar 2 menu utama navigasi Kato POS di Drawer (hanya Katalog & Transaksi sesuai desain):
+/// Daftar menu navigasi Kato POS di Drawer (Katalog, Transaksi, Pengaturan):
 /// 1. Katalog (icons_katalog.svg)
 /// 2. Transaksi (icons_transaksi.svg)
+/// 3. Pengaturan (icons_settings.svg) — termasuk konfigurasi printer struk thermal
 const katoDrawerMenuItems = [
   SidebarMenuItem(
     index: 0,
@@ -34,6 +35,12 @@ const katoDrawerMenuItems = [
     label: 'Transaksi',
     svgPath: 'assets/Icons_SVG/icons_transaksi.svg',
     fallbackIcon: Icons.receipt_long_rounded,
+  ),
+  SidebarMenuItem(
+    index: 3,
+    label: 'Pengaturan',
+    svgPath: 'assets/Icons_SVG/icons_settings.svg',
+    fallbackIcon: Icons.settings_outlined,
   ),
 ];
 
@@ -255,6 +262,9 @@ class KatoSidebar extends ConsumerWidget {
   // Spesifikasi: width: 330, border-right: 1px, gap: 20px
   // ---------------------------------------------------------------------------
   Widget _buildDrawerContent(BuildContext context, WidgetRef ref) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final isShort = screenHeight < 520;
+
     return Container(
       width: 330,
       decoration: const BoxDecoration(
@@ -269,11 +279,17 @@ class KatoSidebar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildDrawerHeader(context, ref),
+          _buildDrawerHeader(context, ref, isShort: isShort),
           Expanded(
             child: SafeArea(
               top: false,
-              child: _buildDrawerBody(context, ref),
+              bottom: true,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                ),
+                child: _buildDrawerBody(context, ref, isShort: isShort),
+              ),
             ),
           ),
         ],
@@ -283,7 +299,7 @@ class KatoSidebar extends ConsumerWidget {
 
   /// Header ungu (#5247A1) dengan lengkungan sudut kanan bawah (radius 100px)
   /// Spesifikasi: width: 330, height: 175, padding: 5px 24px 24px 24px, gap: 20px, radius: 100px
-  Widget _buildDrawerHeader(BuildContext context, WidgetRef ref) {
+  Widget _buildDrawerHeader(BuildContext context, WidgetRef ref, {bool isShort = false}) {
     final connectivity = ref.watch(posConnectivityProvider);
     final isOnline = connectivity.isOnline;
     final dotColor = isOnline ? const Color(0xFF28A555) : const Color(0xFFDC2626);
@@ -305,11 +321,11 @@ class KatoSidebar extends ConsumerWidget {
 
     return Container(
       width: 330,
-      constraints: const BoxConstraints(minHeight: 180),
-      decoration: const BoxDecoration(
-        color: Color(0xFF5247A1),
+      constraints: BoxConstraints(minHeight: isShort ? 100 : 180),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5247A1),
         borderRadius: BorderRadius.only(
-          bottomRight: Radius.circular(100),
+          bottomRight: Radius.circular(isShort ? 40 : 100),
         ),
       ),
       child: SafeArea(
@@ -318,7 +334,12 @@ class KatoSidebar extends ConsumerWidget {
         left: false,
         right: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 22),
+          padding: EdgeInsets.fromLTRB(
+            isShort ? 20 : 24,
+            isShort ? 10 : 20,
+            isShort ? 20 : 24,
+            isShort ? 12 : 22,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -400,7 +421,7 @@ class KatoSidebar extends ConsumerWidget {
                 ],
               ),
 
-              const SizedBox(height: 18),
+              SizedBox(height: isShort ? 8 : 18),
 
               // Baris 2: Avatar Kotak Putih + Badge Toko & Info Kasir
               // Avatar lebar 40px, jarak 12px -> teks kasir mulai tepat pada offset x=76px (24+40+12)
@@ -409,17 +430,17 @@ class KatoSidebar extends ConsumerWidget {
                 children: [
                   // Avatar dalam kotak putih (radius 10) dengan ikon user ungu
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: isShort ? 34 : 40,
+                    height: isShort ? 34 : 40,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(isShort ? 8 : 10),
                     ),
                     alignment: Alignment.center,
                     child: SvgPicture.asset(
                       'assets/Icons_SVG/icon_user.svg',
-                      width: 22,
-                      height: 22,
+                      width: isShort ? 18 : 22,
+                      height: isShort ? 18 : 22,
                       colorFilter: const ColorFilter.mode(
                         Color(0xFF5247A1),
                         BlendMode.srcIn,
@@ -529,11 +550,17 @@ class KatoSidebar extends ConsumerWidget {
 
   /// Body Drawer: Tombol Sinkronisasi, 2 Menu Utama (Katalog & Transaksi), dan Tombol Keluar
   /// Layout sejajar dengan profil (gap: 20px, margin horizontal: 24px)
-  Widget _buildDrawerBody(BuildContext context, WidgetRef ref) {
+  Widget _buildDrawerBody(BuildContext context, WidgetRef ref, {bool isShort = false}) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      padding: EdgeInsets.fromLTRB(
+        isShort ? 20 : 24,
+        isShort ? 12 : 20,
+        isShort ? 20 : 24,
+        isShort ? 16 : 24,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // 1. Tombol Sinkronisasi (#5247A1)
           InkWell(
@@ -548,6 +575,7 @@ class KatoSidebar extends ConsumerWidget {
               ref.invalidate(categoriesProvider);
               ref.read(salesProvider.notifier).fetchSalesFromApi();
               ref.read(posConnectivityProvider.notifier).checkConnectivity();
+              ref.read(notificationsProvider.notifier).fetchNotifications();
               ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -563,8 +591,8 @@ class KatoSidebar extends ConsumerWidget {
             },
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              height: 38,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              height: isShort ? 34 : 38,
+              padding: EdgeInsets.symmetric(horizontal: isShort ? 12 : 16),
               decoration: BoxDecoration(
                 color: const Color(0xFF5247A1),
                 borderRadius: BorderRadius.circular(10),
@@ -592,15 +620,16 @@ class KatoSidebar extends ConsumerWidget {
             ),
           ),
 
-          const SizedBox(height: 20),
+          SizedBox(height: isShort ? 12 : 20),
 
           // 2. Daftar Menu Navigasi: Hanya Katalog & Transaksi (gap: 20px)
           // Slot ikon selebar 40px + jarak 12px mensejajarkan teks menu tepat dengan teks profil
           for (int i = 0; i < katoDrawerMenuItems.length; i++) ...[
-            if (i > 0) const SizedBox(height: 20),
+            if (i > 0) SizedBox(height: isShort ? 10 : 20),
             _buildDrawerMenuItem(
               item: katoDrawerMenuItems[i],
               isSelected: activeIndex == katoDrawerMenuItems[i].index,
+              isShort: isShort,
               onTap: () {
                 Navigator.of(context).maybePop();
                 onIndexChanged?.call(katoDrawerMenuItems[i].index);
@@ -608,12 +637,12 @@ class KatoSidebar extends ConsumerWidget {
             ),
           ],
 
-          const SizedBox(height: 20),
+          SizedBox(height: isShort ? 14 : 20),
 
           // 3. Tombol Keluar (Merah #DC2626)
           SizedBox(
             width: double.infinity,
-            height: 44,
+            height: isShort ? 38 : 44,
             child: ElevatedButton.icon(
               onPressed: () {
                 Navigator.of(context).maybePop();
@@ -645,7 +674,7 @@ class KatoSidebar extends ConsumerWidget {
             ),
           ),
 
-          const Spacer(),
+          SizedBox(height: isShort ? 12 : 24),
         ],
       ),
     );
@@ -655,23 +684,24 @@ class KatoSidebar extends ConsumerWidget {
     required SidebarMenuItem item,
     required bool isSelected,
     required VoidCallback onTap,
+    bool isShort = false,
   }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
+        padding: EdgeInsets.symmetric(vertical: isShort ? 2 : 4),
         child: Row(
           children: [
             // Slot ikon selebar 40px sejajar vertikal dengan avatar kotak 40px di header
             SizedBox(
-              width: 40,
-              height: 40,
+              width: isShort ? 34 : 40,
+              height: isShort ? 34 : 40,
               child: Center(
                 child: SvgPicture.asset(
                   item.svgPath,
-                  width: 22,
-                  height: 22,
+                  width: isShort ? 19 : 22,
+                  height: isShort ? 19 : 22,
                   colorFilter: ColorFilter.mode(
                     isSelected
                         ? const Color(0xFF5247A1)

@@ -361,6 +361,7 @@ class SalesNotifier extends Notifier<List<SaleRecord>> {
         };
         ref.read(posProductsProvider.notifier).deductStock(deductMap);
       }
+      ref.read(notificationsProvider.notifier).fetchNotifications();
       return;
     }
 
@@ -372,6 +373,7 @@ class SalesNotifier extends Notifier<List<SaleRecord>> {
       };
       ref.read(posProductsProvider.notifier).deductStock(deductMap);
     }
+    ref.read(notificationsProvider.notifier).fetchNotifications();
   }
 
   /// Manual webhook status sync for pending QRIS transactions (FAQ Q9).
@@ -427,6 +429,9 @@ class SalesNotifier extends Notifier<List<SaleRecord>> {
 
         // Ambil ulang data sales dari API secara background untuk sinkronisasi penuh
         fetchSalesFromApi();
+
+        // Segera ambil notifikasi terbaru dari server (misal: "Transaksi Dibatalkan")
+        ref.read(notificationsProvider.notifier).fetchNotifications();
 
         return (
           true,
@@ -506,28 +511,73 @@ final posConnectivityProvider =
 );
 
 // ---------------------------------------------------------------------------
-// System Notifications State
+// System Notifications State (`/api/v1/notifications`)
 // ---------------------------------------------------------------------------
+
+final unreadNotificationsCountStateProvider = StateProvider<int>((ref) => 0);
+final isNotificationsLoadingProvider = StateProvider<bool>((ref) => false);
 
 class NotificationsNotifier extends Notifier<List<SystemNotification>> {
   @override
-  List<SystemNotification> build() => PosDummyData.initialNotifications;
+  List<SystemNotification> build() {
+    Future.microtask(() => fetchNotifications());
+    return PosDummyData.initialNotifications;
+  }
 
-  void markAsRead(int id) {
+  /// Mengambil daftar notifikasi terbaru dari backend (`/api/v1/notifications`).
+  Future<void> fetchNotifications({bool? isRead}) async {
+    ref.read(isNotificationsLoadingProvider.notifier).state = true;
+    try {
+      final repo = ref.read(posRepositoryProvider);
+      final (result, _) = await repo.getNotifications(isRead: isRead);
+      if (result != null) {
+        final (items, unreadCount) = result;
+        state = items;
+        ref.read(unreadNotificationsCountStateProvider.notifier).state = unreadCount;
+      }
+    } catch (_) {
+    } finally {
+      ref.read(isNotificationsLoadingProvider.notifier).state = false;
+    }
+  }
+
+  /// Menandai satu notifikasi sebagai telah dibaca (`PATCH /api/v1/notifications/{id}/read`).
+  Future<void> markAsRead(int id) async {
+    final wasUnread = state.any((n) => n.id == id && !n.isRead);
     state = [
       for (final n in state)
         if (n.id == id) n.copyWith(isRead: true) else n,
     ];
+    if (wasUnread) {
+      final currentUnread = ref.read(unreadNotificationsCountStateProvider);
+      if (currentUnread > 0) {
+        ref.read(unreadNotificationsCountStateProvider.notifier).state =
+            currentUnread - 1;
+      }
+    }
+
+    try {
+      final repo = ref.read(posRepositoryProvider);
+      await repo.markNotificationAsRead(id: id);
+    } catch (_) {}
   }
 
-  void markAllAsRead() {
+  /// Menandai seluruh notifikasi yang belum dibaca menjadi terbaca (`PATCH /api/v1/notifications/read-all`).
+  Future<void> markAllAsRead() async {
     state = [for (final n in state) n.copyWith(isRead: true)];
+    ref.read(unreadNotificationsCountStateProvider.notifier).state = 0;
+
+    try {
+      final repo = ref.read(posRepositoryProvider);
+      await repo.markAllNotificationsAsRead();
+    } catch (_) {}
   }
 
   void addNotification({
     required String title,
     required String message,
     required NotificationSeverity severity,
+    String? type,
   }) {
     final nextId = state.isEmpty
         ? 1
@@ -539,8 +589,12 @@ class NotificationsNotifier extends Notifier<List<SystemNotification>> {
       createdAt: DateTime.now(),
       isRead: false,
       severity: severity,
+      type: type,
     );
     state = [notification, ...state];
+    final currentUnread = ref.read(unreadNotificationsCountStateProvider);
+    ref.read(unreadNotificationsCountStateProvider.notifier).state =
+        currentUnread + 1;
   }
 }
 
@@ -550,8 +604,10 @@ final notificationsProvider =
 );
 
 final unreadNotificationsCountProvider = Provider<int>((ref) {
+  final explicitCount = ref.watch(unreadNotificationsCountStateProvider);
   final list = ref.watch(notificationsProvider);
-  return list.where((n) => !n.isRead).length;
+  final calculated = list.where((n) => !n.isRead).length;
+  return explicitCount > calculated ? explicitCount : calculated;
 });
 
 // ---------------------------------------------------------------------------

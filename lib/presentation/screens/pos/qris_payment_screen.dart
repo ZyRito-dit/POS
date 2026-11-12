@@ -225,12 +225,18 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     final totalTagihan = ref.watch(cartTotalAmountProvider);
-    final isMobile = MediaQuery.sizeOf(context).width < 600;
+    final size = MediaQuery.sizeOf(context);
+    final screenWidth = size.width;
+    final screenHeight = size.height;
+    final isMobile = screenWidth < 600;
+    final isLandscapeShort = screenHeight < 520;
 
     return PaymentBackgroundScaffold(
       child: Container(
         width: double.infinity,
-        constraints: BoxConstraints(maxWidth: isMobile ? 420 : 480),
+        constraints: BoxConstraints(
+          maxWidth: isLandscapeShort ? 620 : (isMobile ? 420 : 480),
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -248,145 +254,305 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
           ],
         ),
         padding: EdgeInsets.symmetric(
-          horizontal: isMobile ? 24 : 36,
-          vertical: isMobile ? 28 : 36,
+          horizontal: isLandscapeShort ? 24 : (isMobile ? 24 : 36),
+          vertical: isLandscapeShort ? 18 : (isMobile ? 28 : 36),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // 1. Icon Logo Kato POS
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.asset(
-                'assets/Logo/logo_kato_pos.png',
-                width: 48,
-                height: 48,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF5247A1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.storefront_rounded,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
+        child: isLandscapeShort
+            ? _buildLandscapeContent(context, totalTagihan)
+            : _buildPortraitContent(context, totalTagihan, isMobile),
+      ),
+    );
+  }
 
-            // 2. Teks Nama Sistem
-            const Text(
-              'Kato POS System',
-              style: TextStyle(
-                fontFamily: 'Open Sans',
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                color: Color(0xFF4A409A),
-              ),
-            ),
-            const SizedBox(height: 22),
+  /// Tampilan Responsif Mode Landscape untuk HP (Side-by-Side 2 Kolom)
+  Widget _buildLandscapeContent(BuildContext context, int totalTagihan) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // Sisi Kiri: Scanner QRIS Kompak
+        QrisCodeDisplay(
+          qrData: _qrisInfo?.qrPayload,
+          isLoading: _isLoadingQris,
+          size: 150,
+          onTap: _simulateOrVerify,
+        ),
+        const SizedBox(width: 24),
 
-            // 3. Tampilan QR Code dengan Bingkai Scanner Membulat
-            QrisCodeDisplay(
-              qrData: _qrisInfo?.qrPayload,
-              isLoading: _isLoadingQris,
-              size: isMobile ? 180 : 196,
-              onTap: _simulateOrVerify,
-            ),
-            const SizedBox(height: 22),
-
-            // 4. Label Total Tagihan
-            const Text(
-              'Total Tagihan',
-              style: TextStyle(
-                fontFamily: 'Open Sans',
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-                color: Color(0xFF1E293B),
-              ),
-            ),
-            const SizedBox(height: 6),
-
-            // 5. Nominal Tagihan Besar
-            Text(
-              AppFormatters.formatRupiah(totalTagihan),
-              style: const TextStyle(
-                fontFamily: 'Open Sans',
-                fontWeight: FontWeight.w800,
-                fontSize: 30,
-                color: Color(0xFF4A409A),
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // 6. Label Status Menunggu Konfirmasi Pembayaran
-            InkWell(
-              onTap: _simulateOrVerify,
-              borderRadius: BorderRadius.circular(6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (_isProcessing) ...[
-                      const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Color(0xFF64748B),
+        // Sisi Kanan: Info Pembayaran, Status, dan Tombol Batal
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Header Ringkas: Logo + Nama Sistem
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/Logo/logo_kato_pos.png',
+                      width: 30,
+                      height: 30,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5247A1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.storefront_rounded,
+                          color: Colors.white,
+                          size: 18,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(
-                      _qrisErrorMessage ?? 'Menunggu Konfirmasi Pembayaran',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: 'Open Sans',
-                        fontWeight: FontWeight.w500,
-                        fontSize: isMobile ? 12.5 : 13.5,
-                        color: _qrisErrorMessage != null
-                            ? const Color(0xFFDC2626)
-                            : const Color(0xFF64748B),
-                      ),
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Kato POS System',
+                    style: TextStyle(
+                      fontFamily: 'Open Sans',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: Color(0xFF4A409A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              // Total Tagihan & Nominal
+              const Text(
+                'Total Tagihan',
+                style: TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  color: Color(0xFF1E293B),
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // 7. Tombol Batalkan Pembayaran (Filled Style sesuai Gambar 2)
-            SizedBox(
-              height: 44,
-              child: ElevatedButton(
-                onPressed: _onCancel,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4A409A),
-                  foregroundColor: Colors.white,
-                  elevation: 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 28),
+              const SizedBox(height: 2),
+              Text(
+                AppFormatters.formatRupiah(totalTagihan),
+                style: const TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  color: Color(0xFF4A409A),
+                  letterSpacing: -0.5,
                 ),
-                child: const Text(
-                  'Batalkan Pembayaran',
-                  style: TextStyle(
-                    fontFamily: 'Open Sans',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: Colors.white,
+              ),
+              const SizedBox(height: 8),
+
+              // Status / Error Pesan Responsif
+              _buildStatusOrErrorWidget(isMobile: true),
+              const SizedBox(height: 12),
+
+              // Tombol Batal
+              SizedBox(
+                height: 38,
+                child: ElevatedButton(
+                  onPressed: _onCancel,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4A409A),
+                    foregroundColor: Colors.white,
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                   ),
+                  child: const Text(
+                    'Batalkan Pembayaran',
+                    style: TextStyle(
+                      fontFamily: 'Open Sans',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Tampilan Portrait / Tablet Layar Standar (1 Kolom Vertikal)
+  Widget _buildPortraitContent(
+    BuildContext context,
+    int totalTagihan,
+    bool isMobile,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // 1. Icon Logo Kato POS
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            'assets/Logo/logo_kato_pos.png',
+            width: isMobile ? 44 : 48,
+            height: isMobile ? 44 : 48,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFF5247A1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // 2. Teks Nama Sistem
+        Text(
+          'Kato POS System',
+          style: TextStyle(
+            fontFamily: 'Open Sans',
+            fontWeight: FontWeight.w700,
+            fontSize: isMobile ? 15 : 16,
+            color: const Color(0xFF4A409A),
+          ),
+        ),
+        SizedBox(height: isMobile ? 16 : 22),
+
+        // 3. Tampilan QR Code dengan Bingkai Scanner Membulat
+        QrisCodeDisplay(
+          qrData: _qrisInfo?.qrPayload,
+          isLoading: _isLoadingQris,
+          size: isMobile ? 170 : 196,
+          onTap: _simulateOrVerify,
+        ),
+        SizedBox(height: isMobile ? 16 : 22),
+
+        // 4. Label Total Tagihan
+        const Text(
+          'Total Tagihan',
+          style: TextStyle(
+            fontFamily: 'Open Sans',
+            fontWeight: FontWeight.w700,
+            fontSize: 15,
+            color: Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        // 5. Nominal Tagihan Besar
+        Text(
+          AppFormatters.formatRupiah(totalTagihan),
+          style: TextStyle(
+            fontFamily: 'Open Sans',
+            fontWeight: FontWeight.w800,
+            fontSize: isMobile ? 26 : 30,
+            color: const Color(0xFF4A409A),
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // 6. Label Status / Error Menunggu Konfirmasi Pembayaran
+        _buildStatusOrErrorWidget(isMobile: isMobile),
+        const SizedBox(height: 24),
+
+        // 7. Tombol Batalkan Pembayaran (Filled Style sesuai Gambar 2)
+        SizedBox(
+          height: 44,
+          child: ElevatedButton(
+            onPressed: _onCancel,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4A409A),
+              foregroundColor: Colors.white,
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+            ),
+            child: const Text(
+              'Batalkan Pembayaran',
+              style: TextStyle(
+                fontFamily: 'Open Sans',
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Widget Status / Error Responsif (Anti-Overflow dengan wrapping teks rapi)
+  Widget _buildStatusOrErrorWidget({required bool isMobile}) {
+    final isError = _qrisErrorMessage != null;
+
+    return InkWell(
+      onTap: _simulateOrVerify,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 380),
+        padding: EdgeInsets.symmetric(
+          horizontal: isError ? 12 : 8,
+          vertical: isError ? 6 : 4,
+        ),
+        decoration: isError
+            ? BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFECACA), width: 1),
+              )
+            : null,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_isProcessing) ...[
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ] else if (isError) ...[
+              const Icon(
+                Icons.error_outline_rounded,
+                size: 16,
+                color: Color(0xFFDC2626),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                _qrisErrorMessage ?? 'Menunggu Konfirmasi Pembayaran',
+                textAlign: TextAlign.center,
+                softWrap: true,
+                maxLines: isError ? 3 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontWeight: FontWeight.w500,
+                  fontSize: isMobile ? 12 : 13,
+                  color: isError
+                      ? const Color(0xFFDC2626)
+                      : const Color(0xFF64748B),
                 ),
               ),
             ),

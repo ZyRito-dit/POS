@@ -76,6 +76,22 @@ class _FakePosCatalogRepository implements PosRepository {
     String? reason,
   }) async =>
       (true, 'Transaksi berhasil dibatalkan', null);
+
+  @override
+  Future<((List<SystemNotification>, int)?, AppFailure?)> getNotifications({
+    bool? isRead,
+    int page = 1,
+    int perPage = 20,
+  }) async =>
+      ((<SystemNotification>[], 0), null);
+
+  @override
+  Future<(bool, AppFailure?)> markNotificationAsRead({required int id}) async =>
+      (true, null);
+
+  @override
+  Future<(bool, AppFailure?)> markAllNotificationsAsRead() async =>
+      (true, null);
 }
 
 void main() {

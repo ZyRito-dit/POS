@@ -30,6 +30,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _activeNavIndex = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(notificationsProvider.notifier).fetchNotifications();
+      }
+    });
+  }
+
   void _handleLogout() {
     ref.read(loginProvider.notifier).logout();
     if (mounted) {
@@ -101,6 +111,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             activeIndex: _activeNavIndex,
             onIndexChanged: (idx) {
               setState(() => _activeNavIndex = idx);
+              if (idx == 0) {
+                ref.read(notificationsProvider.notifier).fetchNotifications();
+              }
             },
             onLogout: _handleLogout,
           ),
@@ -167,6 +180,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           activeIndex: _activeNavIndex,
           onIndexChanged: (idx) {
             setState(() => _activeNavIndex = idx);
+            if (idx == 0) {
+              ref.read(notificationsProvider.notifier).fetchNotifications();
+            }
           },
           onLogout: _handleLogout,
         ),
@@ -293,6 +309,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         return TransactionsView(
           onBackPressed: () {
             setState(() => _activeNavIndex = 0);
+            ref.read(notificationsProvider.notifier).fetchNotifications();
           },
         );
       case 2:

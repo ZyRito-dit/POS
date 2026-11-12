@@ -69,6 +69,45 @@ class AppFormatters {
     return '$day $month $year, $hour:$minute';
   }
 
+  /// Formats DateTime for notification items with Indonesia timezone indicator and relative day context (e.g. "Hari ini, 08:43 WIB", "Kemarin, 21:32 WIB", or "10 Nov 2026, 21:32 WIB").
+  static String formatNotificationDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final itemDate = DateTime(local.year, local.month, local.day);
+    final differenceDays = today.difference(itemDate).inDays;
+
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour:$minute WIB';
+
+    if (differenceDays == 0) {
+      return 'Hari ini, $timeStr';
+    } else if (differenceDays == 1) {
+      return 'Kemarin, $timeStr';
+    }
+
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    final day = local.day.toString().padLeft(2, '0');
+    final month = months[local.month - 1];
+    final year = local.year;
+
+    return '$day $month $year, $timeStr';
+  }
+
   /// Formats DateTime into short time "13:15 WIB".
   static String formatTimeOnly(DateTime dt) {
     final local = dt.toLocal();

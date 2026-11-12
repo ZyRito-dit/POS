@@ -7,6 +7,7 @@ import 'package:pos_apps_umkm/core/errors/app_failure.dart';
 import 'package:pos_apps_umkm/core/errors/error_mapper.dart';
 import 'package:pos_apps_umkm/core/network/dio_provider.dart';
 import 'package:pos_apps_umkm/data/models/checkout_dto.dart';
+import 'package:pos_apps_umkm/data/models/notification_dto.dart';
 import 'package:pos_apps_umkm/data/models/pos_catalog_dto.dart';
 import 'package:pos_apps_umkm/domain/entities/pos_entities.dart';
 import 'package:pos_apps_umkm/domain/repositories/pos_repository.dart';
@@ -403,6 +404,66 @@ class PosRepositoryImpl implements PosRepository {
       return (false, null, mapDioExceptionToFailure(e));
     } catch (e) {
       return (false, null, UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<((List<SystemNotification>, int)?, AppFailure?)> getNotifications({
+    bool? isRead,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'per_page': perPage,
+      };
+      if (isRead != null) {
+        queryParams['is_read'] = isRead;
+      }
+
+      final response = await _dio.get(
+        AppConstants.notificationsEndpoint,
+        queryParameters: queryParams,
+      );
+
+      final raw = response.data;
+      if (raw is Map<String, dynamic>) {
+        final dto = NotificationListResponseDto.fromJson(raw);
+        final entities = dto.items.map((i) => i.toEntity()).toList();
+        return ((entities, dto.unreadCount), null);
+      }
+      return ((<SystemNotification>[], 0), null);
+    } on DioException catch (e) {
+      return (null, mapDioExceptionToFailure(e));
+    } catch (e) {
+      return (null, UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<(bool, AppFailure?)> markNotificationAsRead({
+    required int id,
+  }) async {
+    try {
+      await _dio.patch(AppConstants.markNotificationReadEndpoint(id));
+      return (true, null);
+    } on DioException catch (e) {
+      return (false, mapDioExceptionToFailure(e));
+    } catch (e) {
+      return (false, UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<(bool, AppFailure?)> markAllNotificationsAsRead() async {
+    try {
+      await _dio.patch(AppConstants.markAllNotificationsReadEndpoint);
+      return (true, null);
+    } on DioException catch (e) {
+      return (false, mapDioExceptionToFailure(e));
+    } catch (e) {
+      return (false, UnknownFailure(e.toString()));
     }
   }
 }

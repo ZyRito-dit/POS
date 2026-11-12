@@ -4,6 +4,7 @@ class AppConstants {
   AppConstants._();
 
   static const String baseUrl = 'http://157.20.32.181:8006';
+  // static const String baseUrl = 'http://192.168.8.229:8005';
   static const String apiVersion = '/api/v1';
   static const String apiBaseUrl = '$baseUrl$apiVersion';
 
@@ -26,11 +27,21 @@ class AppConstants {
 
   static String saleDetailEndpoint(int saleId) => '/sales/$saleId';
   static String cancelSaleEndpoint(int saleId) => '/sales/$saleId/cancel';
-  static String initiateQrisEndpoint(int saleId) => '/sales/$saleId/payments/qris';
+  static String initiateQrisEndpoint(int saleId) =>
+      '/sales/$saleId/payments/qris';
   static String paymentStatusEndpoint(int paymentId) => '/payments/$paymentId';
-  static String simulatePayEndpoint(int paymentId) => '/payments/$paymentId/simulate-pay';
-  static String verifyPaymentEndpoint(int paymentId) => '/payments/$paymentId/verify';
+  static String simulatePayEndpoint(int paymentId) =>
+      '/payments/$paymentId/simulate-pay';
+  static String verifyPaymentEndpoint(int paymentId) =>
+      '/payments/$paymentId/verify';
   static String saleReceiptEndpoint(int saleId) => '/sales/$saleId/receipt';
+
+  // Notifications endpoints (KatoPOS Backend API)
+  static const String notificationsEndpoint = '/notifications';
+  static const String markAllNotificationsReadEndpoint =
+      '/notifications/read-all';
+  static String markNotificationReadEndpoint(int id) =>
+      '/notifications/$id/read';
 
   // Token & Session storage keys
   static const String tokenKey = 'nexsell_access_token';

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
 import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
+import 'package:pos_apps_umkm/presentation/screens/home/widgets/kato_notifications_modal.dart';
 
 /// Topbar Kato POS sesuai spesifikasi Figma dan referensi gambar.
 /// Spesifikasi:
@@ -43,6 +44,8 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
 
     final selectedOutlet = ref.watch(selectedOutletProvider);
     final accessibleOutlets = ref.watch(accessibleOutletsProvider);
+    final unreadNotificationsCount =
+        ref.watch(unreadNotificationsCountProvider);
     final outletName = selectedOutlet?.name.isNotEmpty == true
         ? selectedOutlet!.name
         : 'Kato & Co. Sudirman';
@@ -169,23 +172,73 @@ class KatoTopbar extends ConsumerWidget implements PreferredSizeWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. Icon Notifikasi (Lonceng Putih)
-              Container(
-                width: isMobile ? 32 : 36,
-                height: isMobile ? 32 : 36,
-                alignment: Alignment.center,
-                child: SvgPicture.asset(
-                  'assets/Icons_SVG/Notifications.svg',
-                  width: isMobile ? 20 : 22,
-                  height: isMobile ? 20 : 22,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.notifications_none_rounded,
-                    size: isMobile ? 20 : 22,
-                    color: Colors.white,
+              // 1. Icon Notifikasi (Lonceng Putih) dengan Badge Unread & Interaksi Modal
+              InkWell(
+                key: const Key('topbar_notification_bell'),
+                onTap: () {
+                  ref.read(notificationsProvider.notifier).fetchNotifications();
+                  KatoNotificationsModal.show(context);
+                },
+                borderRadius: BorderRadius.circular(100),
+                child: SizedBox(
+                  width: isMobile ? 36 : 40,
+                  height: isMobile ? 36 : 40,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Center(
+                        child: SvgPicture.asset(
+                          'assets/Icons_SVG/Notifications.svg',
+                          width: isMobile ? 22 : 24,
+                          height: isMobile ? 22 : 24,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.notifications_none_rounded,
+                            size: isMobile ? 22 : 24,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      if (unreadNotificationsCount > 0)
+                        Positioned(
+                          top: isMobile ? 1 : 2,
+                          right: isMobile ? 0 : 1,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 16,
+                              minHeight: 16,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFF5247A1),
+                                width: 1.5,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              unreadNotificationsCount > 99
+                                  ? '99+'
+                                  : '$unreadNotificationsCount',
+                              style: const TextStyle(
+                                fontFamily: 'Open Sans',
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ),

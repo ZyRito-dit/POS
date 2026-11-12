@@ -231,6 +231,10 @@ class SystemNotification extends Equatable {
   final DateTime createdAt;
   final bool isRead;
   final NotificationSeverity severity;
+  final String? type;
+  final String? referenceType;
+  final int? referenceId;
+  final DateTime? readAt;
 
   const SystemNotification({
     required this.id,
@@ -239,9 +243,16 @@ class SystemNotification extends Equatable {
     required this.createdAt,
     required this.isRead,
     required this.severity,
+    this.type,
+    this.referenceType,
+    this.referenceId,
+    this.readAt,
   });
 
-  SystemNotification copyWith({bool? isRead}) {
+  SystemNotification copyWith({
+    bool? isRead,
+    DateTime? readAt,
+  }) {
     return SystemNotification(
       id: id,
       title: title,
@@ -249,11 +260,26 @@ class SystemNotification extends Equatable {
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
       severity: severity,
+      type: type,
+      referenceType: referenceType,
+      referenceId: referenceId,
+      readAt: readAt ?? this.readAt,
     );
   }
 
   @override
-  List<Object?> get props => [id, title, message, createdAt, isRead, severity];
+  List<Object?> get props => [
+        id,
+        title,
+        message,
+        createdAt,
+        isRead,
+        severity,
+        type,
+        referenceType,
+        referenceId,
+        readAt,
+      ];
 }
 
 class PosTerminalInfo extends Equatable {

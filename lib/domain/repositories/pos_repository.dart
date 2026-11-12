@@ -69,4 +69,19 @@ abstract interface class PosRepository {
     required int saleId,
     String? reason,
   });
+
+  /// Mengambil daftar notifikasi dan counter belum dibaca (`/api/v1/notifications`).
+  Future<((List<SystemNotification>, int)?, AppFailure?)> getNotifications({
+    bool? isRead,
+    int page = 1,
+    int perPage = 20,
+  });
+
+  /// Menandai satu notifikasi sebagai telah dibaca (`PATCH /api/v1/notifications/{id}/read`).
+  Future<(bool, AppFailure?)> markNotificationAsRead({
+    required int id,
+  });
+
+  /// Menandai seluruh notifikasi yang belum dibaca menjadi terbaca (`PATCH /api/v1/notifications/read-all`).
+  Future<(bool, AppFailure?)> markAllNotificationsAsRead();
 }

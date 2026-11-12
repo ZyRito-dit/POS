@@ -128,8 +128,10 @@ class PaymentBackgroundScaffold extends StatelessWidget {
                     child: Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: isMobile ? 24 : 36,
+                          horizontal: isMobile ? 16 : 24,
+                          vertical: screenHeight < 520
+                              ? 12
+                              : (isMobile ? 24 : 36),
                         ),
                         child: child,
                       ),

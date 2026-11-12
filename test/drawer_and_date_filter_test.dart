@@ -130,5 +130,58 @@ void main() {
         expect(find.text('Reset'), findsNothing);
       }
     });
+
+    testWidgets(
+        'Drawer: Android Phone Landscape (844x360) opens without any RenderFlex overflow',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(844, 360);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final scaffoldKey = GlobalKey<ScaffoldState>();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              key: scaffoldKey,
+              drawer: const Drawer(
+                child: KatoSidebar(
+                  isDrawer: true,
+                ),
+              ),
+              body: Center(
+                child: ElevatedButton(
+                  onPressed: () => scaffoldKey.currentState?.openDrawer(),
+                  child: const Text('Open Drawer'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Open drawer in phone landscape mode
+      scaffoldKey.currentState?.openDrawer();
+      await tester.pumpAndSettle();
+
+      // Assert zero exceptions / zero RenderFlex overflow
+      expect(tester.takeException(), isNull);
+      expect(scaffoldKey.currentState?.isDrawerOpen, isTrue);
+
+      // Verify all essential items are rendered
+      expect(find.text('Katalog'), findsOneWidget);
+      expect(find.text('Transaksi'), findsOneWidget);
+      expect(find.text('Sinkronisasi'), findsOneWidget);
+      expect(find.text('Keluar'), findsOneWidget);
+      expect(find.byTooltip('Tutup Menu'), findsOneWidget);
+
+      // Tap Tutup Menu
+      await tester.tap(find.byTooltip('Tutup Menu'));
+      await tester.pumpAndSettle();
+      expect(scaffoldKey.currentState?.isDrawerOpen, isFalse);
+    });
   });
 }

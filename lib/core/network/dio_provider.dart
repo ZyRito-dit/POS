@@ -67,7 +67,19 @@ class AuthTokenInterceptor extends Interceptor {
         path.contains(AppConstants.loginEndpoint);
     final isAlreadyRetried = requestOptions.extra['is_retry'] == true;
 
-    if (response?.statusCode == 401 && !isAuthEndpoint && !isAlreadyRetried) {
+    // Prevent silent renewal on missing server token claims (e.g. Tenant ID / Outlet ID)
+    // Refreshing the token cannot resolve omitted backend claims from server-side JWT generation.
+    final responseData = response?.data;
+    final errorMessage = responseData is Map<String, dynamic>
+        ? (responseData['message'] as String? ?? '').toLowerCase()
+        : '';
+    final isMissingClaim = errorMessage.contains('tenant id') ||
+        errorMessage.contains('outlet id');
+
+    if (response?.statusCode == 401 &&
+        !isAuthEndpoint &&
+        !isAlreadyRetried &&
+        !isMissingClaim) {
       if (kDebugMode) {
         debugPrint(
           '[AuthTokenInterceptor] 401 Unauthorized on $path. Triggering silent token renewal...',
@@ -243,7 +255,13 @@ final dioProvider = Provider<Dio>((ref) {
         String suggestion = '';
         final path = error.requestOptions.path;
         if (error.response?.statusCode == 401) {
-          suggestion = 'Periksa email dan password. Gunakan akun yang sudah terdaftar di Kato POS.';
+          if (serverMsg != null && serverMsg.toLowerCase().contains('tenant id')) {
+            suggestion =
+                'Masalah Konfigurasi Backend: Token dari backend tidak menyertakan klaim "tenant_id". Hubungi tim backend untuk menyertakan tenant_id pada payload JWT login/refresh kasir.';
+          } else {
+            suggestion =
+                'Periksa email dan password. Gunakan akun yang sudah terdaftar di Kato POS.';
+          }
         } else if (error.response?.statusCode == 400) {
           if (path.contains('/pos/checkout')) {
             suggestion = 'Validasi transaksi checkout gagal. Pastikan outlet aktif dan data pesanan sesuai.';
