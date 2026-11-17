@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pos_apps_umkm/core/router/app_router.dart';
 import 'package:pos_apps_umkm/core/utils/formatters.dart';
 import 'package:pos_apps_umkm/domain/entities/pos_entities.dart';
+import 'package:pos_apps_umkm/presentation/providers/auth_provider.dart';
 import 'package:pos_apps_umkm/presentation/providers/pos_provider.dart';
 import 'package:pos_apps_umkm/presentation/screens/pos/widgets/payment_background_scaffold.dart';
 import 'package:pos_apps_umkm/presentation/screens/pos/widgets/thermal_receipt_preview_dialog.dart';
@@ -274,6 +275,11 @@ class _PaymentSuccessScreenState extends ConsumerState<PaymentSuccessScreen> {
                         ref
                             .read(notificationsProvider.notifier)
                             .fetchNotifications();
+                        // Refresh katalog stok saat kasir menekan tombol Kembali ke Katalog
+                        final activeOutlet = ref.read(selectedOutletProvider);
+                        ref.read(posProductsProvider.notifier).fetchCatalog(
+                              outletId: activeOutlet?.id,
+                            );
                         context.go(AppRoutes.home);
                       },
                       style: OutlinedButton.styleFrom(

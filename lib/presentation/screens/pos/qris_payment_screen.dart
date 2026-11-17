@@ -161,8 +161,18 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
   Future<void> _onPaymentSuccess({required SaleRecord saleRecord}) async {
     _qrisPollTimer?.cancel();
     final selectedOutlet = ref.read(selectedOutletProvider);
-    ref.read(salesProvider.notifier).addSale(saleRecord);
+
+    // Pastikan status saleRecord adalah completed agar stok di-deduct
+    final completedRecord = saleRecord.copyWith(
+      status: TransactionStatus.completed,
+    );
+    ref.read(salesProvider.notifier).addSale(completedRecord);
     ref.read(cartProvider.notifier).clear();
+
+    // Re-fetch katalog dari server agar jumlah stok terbaru langsung tersinkronisasi
+    ref.read(posProductsProvider.notifier).fetchCatalog(
+      outletId: selectedOutlet?.id,
+    );
 
     // Auto-Print Struk jika printer thermal Bluetooth aktif
     final printerConfig = ref.read(printerConfigProvider);

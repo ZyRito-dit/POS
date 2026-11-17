@@ -155,9 +155,16 @@ class _CashPaymentScreenState extends ConsumerState<CashPaymentScreen> {
     }
 
     // 2. Transaksi Berhasil: Buat SaleRecord & simpan ke riwayat transaksi
-    final saleRecord = result.toSaleRecord(method: PaymentMethod.cash);
+    final saleRecord = result.toSaleRecord(method: PaymentMethod.cash).copyWith(
+      status: TransactionStatus.completed,
+    );
     ref.read(salesProvider.notifier).addSale(saleRecord);
     ref.read(cartProvider.notifier).clear();
+
+    // Re-fetch katalog dari server agar jumlah stok terbaru langsung tersinkronisasi
+    ref.read(posProductsProvider.notifier).fetchCatalog(
+      outletId: selectedOutlet?.id,
+    );
 
     // 3. Auto-Print Struk jika printer thermal Bluetooth aktif
     final printerConfig = ref.read(printerConfigProvider);
