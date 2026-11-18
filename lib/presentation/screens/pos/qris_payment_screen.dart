@@ -62,9 +62,15 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
   void _startCountdownTimer({DateTime? expiresAt}) {
     _countdownTimer?.cancel();
 
+    // Waktu tunggu di kasir dikunci maksimal 5 menit (300 detik)
+    // agar pelanggan tidak menahan antrean terlalu lama meskipun server gateway memberi 15 menit
     if (expiresAt != null) {
       final diff = expiresAt.difference(DateTime.now()).inSeconds;
-      _remainingSeconds = diff > 0 ? diff : _initialCountdownSeconds;
+      if (diff > 0 && diff < _initialCountdownSeconds) {
+        _remainingSeconds = diff;
+      } else {
+        _remainingSeconds = _initialCountdownSeconds;
+      }
     } else {
       _remainingSeconds = _initialCountdownSeconds;
     }
