@@ -147,9 +147,21 @@ final filteredProductsProvider = Provider<List<PosProduct>>((ref) {
   final products = ref.watch(posProductsProvider);
   final categoryId = ref.watch(selectedCategoryIdProvider);
   final query = ref.watch(catalogSearchQueryProvider).trim().toLowerCase();
+  final categories = ref.watch(categoriesProvider).valueOrNull ?? const [];
+
+  // Cari nama kategori yang dipilih (jika ada) untuk pencocokan ganda (ID atau Nama Kategori)
+  final selectedCat = categories.firstWhere(
+    (c) => c.id == categoryId,
+    orElse: () => const ProductCategory(id: 0, name: ''),
+  );
+  final selectedCatName = selectedCat.name.trim().toLowerCase();
 
   return products.where((product) {
-    final matchesCategory = categoryId == 0 || product.categoryId == categoryId;
+    // Cocokkan categoryId atau nama kategori secara case-insensitive
+    final matchesCategory = categoryId == 0 ||
+        product.categoryId == categoryId ||
+        (selectedCatName.isNotEmpty &&
+            product.categoryName.trim().toLowerCase() == selectedCatName);
     if (!matchesCategory) return false;
     if (query.isEmpty) return true;
     return product.name.toLowerCase().contains(query) ||

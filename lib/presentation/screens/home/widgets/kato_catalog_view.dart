@@ -618,6 +618,14 @@ class _KatoCatalogViewState extends ConsumerState<KatoCatalogView> {
       elevation: 4,
       onSelected: (catId) {
         ref.read(selectedCategoryIdProvider.notifier).state = catId;
+        // Panggil fetchCatalog secara proaktif ke backend dengan categoryId yang dipilih
+        // agar data dari server langsung sinkron tanpa kasir harus menarik refresh secara manual.
+        ref.read(posProductsProvider.notifier).fetchCatalog(
+              categoryId: catId > 0 ? catId : null,
+              search: _searchController.text.trim().isNotEmpty
+                  ? _searchController.text.trim()
+                  : null,
+            );
       },
       itemBuilder: (context) => [
         for (final cat in categories)
