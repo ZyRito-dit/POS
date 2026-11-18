@@ -19,10 +19,9 @@ class SidebarMenuItem {
   });
 }
 
-/// Daftar menu navigasi Kato POS di Drawer (Katalog, Transaksi, Pengaturan):
+/// Daftar 2 menu utama navigasi Kato POS di Drawer (hanya Katalog & Transaksi):
 /// 1. Katalog (icons_katalog.svg)
 /// 2. Transaksi (icons_transaksi.svg)
-/// 3. Pengaturan (icons_settings.svg) — termasuk konfigurasi printer struk thermal
 const katoDrawerMenuItems = [
   SidebarMenuItem(
     index: 0,
@@ -36,15 +35,9 @@ const katoDrawerMenuItems = [
     svgPath: 'assets/Icons_SVG/icons_transaksi.svg',
     fallbackIcon: Icons.receipt_long_rounded,
   ),
-  SidebarMenuItem(
-    index: 3,
-    label: 'Pengaturan',
-    svgPath: 'assets/Icons_SVG/icons_settings.svg',
-    fallbackIcon: Icons.settings_outlined,
-  ),
 ];
 
-/// Daftar menu rail/desktop lengkap
+/// Daftar menu rail/desktop (Katalog & Transaksi saja sesuai arahan desain)
 const katoMenuItems = [
   SidebarMenuItem(
     index: 0,
@@ -57,18 +50,6 @@ const katoMenuItems = [
     label: 'Transaksi',
     svgPath: 'assets/Icons_SVG/icons_transaksi.svg',
     fallbackIcon: Icons.receipt_long_rounded,
-  ),
-  SidebarMenuItem(
-    index: 2,
-    label: 'Stok',
-    svgPath: 'assets/Icons_SVG/icons_stok.svg',
-    fallbackIcon: Icons.inventory_2_outlined,
-  ),
-  SidebarMenuItem(
-    index: 3,
-    label: 'Pengaturan',
-    svgPath: 'assets/Icons_SVG/icons_settings.svg',
-    fallbackIcon: Icons.settings_outlined,
   ),
 ];
 

@@ -684,9 +684,9 @@ class PrinterConfig {
   const PrinterConfig({
     this.paperSize = PrinterPaperSize.mm58,
     this.connectionType = PrinterConnectionType.bluetooth,
-    this.deviceName = 'Belum Terhubung',
+    this.deviceName = 'Printer Bluetooth (Default)',
     this.macAddress,
-    this.isConnected = false,
+    this.isConnected = true,
     this.autoPrintOnCheckout = true,
     this.openCashDrawer = true,
     this.autoCut = true,

@@ -96,7 +96,17 @@ class ThermalPrinterService {
     required String storeAddress,
     required String storePhone,
   }) async {
-    final connected = await isConnected();
+    bool connected = await isConnected();
+    if (!connected) {
+      if (config.macAddress != null && config.macAddress!.isNotEmpty) {
+        connected = await connect(config.macAddress!);
+      } else {
+        final paired = await getPairedDevices();
+        if (paired.isNotEmpty) {
+          connected = await connect(paired.first.macAdress);
+        }
+      }
+    }
     if (!connected) {
       return (false, 'Printer belum terhubung via Bluetooth.');
     }
@@ -226,7 +236,22 @@ class ThermalPrinterService {
     required String storePhone,
     required String footerMessage,
   }) async {
-    final connected = await isConnected();
+    bool connected = await isConnected();
+
+    // Jika belum terhubung secara aktif, coba sambungkan otomatis ke printer Bluetooth yang sudah berpasangan (paired)
+    if (!connected) {
+      if (config.macAddress != null && config.macAddress!.isNotEmpty) {
+        connected = await connect(config.macAddress!);
+      } else {
+        // Coba cari perangkat Bluetooth yang sudah dipasangkan di HP/Tablet
+        final paired = await getPairedDevices();
+        if (paired.isNotEmpty) {
+          // Hubungkan ke perangkat paired pertama (printer kasir default)
+          connected = await connect(paired.first.macAdress);
+        }
+      }
+    }
+
     if (!connected) {
       return (false, 'Printer belum terhubung.');
     }

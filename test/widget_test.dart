@@ -371,9 +371,9 @@ void main() {
     expect(find.text('Keluar'), findsOneWidget);
     expect(find.byTooltip('Tutup Menu'), findsOneWidget);
 
-    // Verify Stok and dark mode toggle are removed per design directive; Pengaturan is available for printer setup
+    // Verify Stok, Pengaturan, and dark mode toggle are removed per design directive
     expect(find.text('Stok'), findsNothing);
-    expect(find.text('Pengaturan'), findsOneWidget);
+    expect(find.text('Pengaturan'), findsNothing);
     expect(find.byTooltip('Mode Gelap'), findsNothing);
     expect(container.read(themeModeProvider), ThemeMode.light);
 
