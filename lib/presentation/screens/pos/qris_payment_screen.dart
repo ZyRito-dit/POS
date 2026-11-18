@@ -30,7 +30,18 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
   bool _isLoadingQris = false;
   String? _qrisErrorMessage;
   Timer? _qrisPollTimer;
+  Timer? _countdownTimer;
+  Timer? _autoCloseTimer;
   bool _isProcessing = false;
+  bool _isExpired = false;
+  bool _isCancelled = false;
+
+  // Hitung mundur masa berlaku QRIS (5 menit = 300 detik)
+  static const int _initialCountdownSeconds = 300;
+  int _remainingSeconds = _initialCountdownSeconds;
+
+  // Hitung mundur penutupan otomatis (10 detik setelah expired/batal)
+  int _autoCloseRemainingSeconds = 10;
 
   @override
   void initState() {
@@ -43,18 +54,97 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
   @override
   void dispose() {
     _qrisPollTimer?.cancel();
+    _countdownTimer?.cancel();
+    _autoCloseTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCountdownTimer({DateTime? expiresAt}) {
+    _countdownTimer?.cancel();
+
+    if (expiresAt != null) {
+      final diff = expiresAt.difference(DateTime.now()).inSeconds;
+      _remainingSeconds = diff > 0 ? diff : _initialCountdownSeconds;
+    } else {
+      _remainingSeconds = _initialCountdownSeconds;
+    }
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_remainingSeconds > 0) {
+        setState(() {
+          _remainingSeconds--;
+        });
+      } else {
+        timer.cancel();
+        _onExpired();
+      }
+    });
+  }
+
+  void _onExpired() {
+    _qrisPollTimer?.cancel();
+    _countdownTimer?.cancel();
+    if (_isExpired || _isCancelled) return;
+
+    setState(() {
+      _isExpired = true;
+      _qrisErrorMessage =
+          'QRIS telah kedaluwarsa. Silakan buat ulang QR atau ganti ke tunai.';
+    });
+
+    _startAutoCloseTimer();
   }
 
   void _onCancel() async {
     _qrisPollTimer?.cancel();
+    _countdownTimer?.cancel();
+    if (_isCancelled) return;
+
+    setState(() {
+      _isCancelled = true;
+      _qrisErrorMessage =
+          'Transaksi QRIS dibatalkan. Silakan buat ulang QR atau ganti ke tunai.';
+    });
+
     if (_qrisCheckoutResult != null) {
       final saleId = _qrisCheckoutResult!.saleId;
-      await ref.read(salesProvider.notifier).cancelSale(
+      ref.read(salesProvider.notifier).cancelSale(
             saleId,
             reason: 'Dibatalkan oleh kasir di layar pembayaran QRIS',
           );
     }
+
+    _startAutoCloseTimer();
+  }
+
+  /// Timer tutup otomatis layar (misal kembali ke katalog setelah 10 detik kedaluwarsa/dibatalkan)
+  void _startAutoCloseTimer() {
+    _autoCloseTimer?.cancel();
+    _autoCloseRemainingSeconds = 10;
+    _autoCloseTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_autoCloseRemainingSeconds > 1) {
+        setState(() {
+          _autoCloseRemainingSeconds--;
+        });
+      } else {
+        timer.cancel();
+        _navigateBack();
+      }
+    });
+  }
+
+  void _navigateBack() {
+    _qrisPollTimer?.cancel();
+    _countdownTimer?.cancel();
+    _autoCloseTimer?.cancel();
     if (mounted) {
       if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop();
@@ -63,6 +153,31 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
           context.go(AppRoutes.home);
         } catch (_) {}
       }
+    }
+  }
+
+  /// Aksi kasir: Buat ulang kode QRIS
+  void _onRetryQris() {
+    _autoCloseTimer?.cancel();
+    setState(() {
+      _isExpired = false;
+      _isCancelled = false;
+      _qrisErrorMessage = null;
+    });
+    _initiateQris();
+  }
+
+  /// Aksi kasir: Beralih ke metode pembayaran Tunai (Cash)
+  void _onSwitchToCash() {
+    _autoCloseTimer?.cancel();
+    _qrisPollTimer?.cancel();
+    _countdownTimer?.cancel();
+    ref.read(selectedPaymentMethodProvider.notifier).state = PaymentMethod.cash;
+    if (mounted) {
+      context.pushReplacement(
+        AppRoutes.paymentCash,
+        extra: _qrisCheckoutResult,
+      );
     }
   }
 
@@ -125,9 +240,12 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
     setState(() {
       _qrisInfo = qrisInfo;
       _isLoadingQris = false;
+      _isExpired = false;
+      _isCancelled = false;
     });
 
-    // 3. Mulai polling status otomatis tiap 4 detik
+    // 3. Mulai hitung mundur masa berlaku (mengikuti expires_at dari backend jika ada, fallback 5 menit) & polling status otomatis
+    _startCountdownTimer(expiresAt: qrisInfo.expiresAt);
     _startQrisPolling(qrisInfo.paymentId);
   }
 
@@ -142,16 +260,14 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
       if (statusInfo != null) {
         if (statusInfo.isPaid) {
           _qrisPollTimer?.cancel();
+          _countdownTimer?.cancel();
+          _autoCloseTimer?.cancel();
           _onPaymentSuccess(
             saleRecord: _qrisCheckoutResult!
                 .toSaleRecord(method: PaymentMethod.qris),
           );
         } else if (statusInfo.isExpired) {
-          _qrisPollTimer?.cancel();
-          setState(() {
-            _qrisErrorMessage =
-                'QRIS telah kedaluwarsa. Silakan muat ulang transaksi.';
-          });
+          _onExpired();
         }
       }
     });
@@ -274,8 +390,17 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
     );
   }
 
+  /// Format sisa waktu menit:detik (contoh: 04:59)
+  String _formatRemainingTime(int seconds) {
+    final m = (seconds ~/ 60).toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
   /// Tampilan Responsif Mode Landscape untuk HP (Side-by-Side 2 Kolom)
   Widget _buildLandscapeContent(BuildContext context, int totalTagihan) {
+    final isInactive = _isExpired || _isCancelled;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -283,12 +408,14 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
         QrisCodeDisplay(
           qrData: _qrisInfo?.qrPayload,
           isLoading: _isLoadingQris,
+          isExpired: _isExpired,
+          isCancelled: _isCancelled,
           size: 150,
           onTap: _simulateOrVerify,
         ),
         const SizedBox(width: 24),
 
-        // Sisi Kanan: Info Pembayaran, Status, dan Tombol Batal
+        // Sisi Kanan: Info Pembayaran, Status, dan Tombol Aksi
         Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -357,35 +484,38 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
               ),
               const SizedBox(height: 8),
 
-              // Status / Error Pesan Responsif
+              // Status / Error Pesan Responsif + Timer Masa Berlaku
               _buildStatusOrErrorWidget(isMobile: true),
               const SizedBox(height: 12),
 
-              // Tombol Batal
-              SizedBox(
-                height: 38,
-                child: ElevatedButton(
-                  onPressed: _onCancel,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A409A),
-                    foregroundColor: Colors.white,
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+              // Tombol Aksi
+              if (isInactive)
+                _buildInactiveActionButtons(isMobile: true)
+              else
+                SizedBox(
+                  height: 38,
+                  child: ElevatedButton(
+                    onPressed: _onCancel,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4A409A),
+                      foregroundColor: Colors.white,
+                      elevation: 1,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                  ),
-                  child: const Text(
-                    'Batalkan Pembayaran',
-                    style: TextStyle(
-                      fontFamily: 'Open Sans',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12.5,
-                      color: Colors.white,
+                    child: const Text(
+                      'Batalkan Pembayaran',
+                      style: TextStyle(
+                        fontFamily: 'Open Sans',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -399,6 +529,8 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
     int totalTagihan,
     bool isMobile,
   ) {
+    final isInactive = _isExpired || _isCancelled;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -440,10 +572,12 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
         ),
         SizedBox(height: isMobile ? 16 : 22),
 
-        // 3. Tampilan QR Code dengan Bingkai Scanner Membulat
+        // 3. Tampilan QR Code dengan Bingkai Scanner Membulat & Overlay Kadaluarsa/Dibatalkan
         QrisCodeDisplay(
           qrData: _qrisInfo?.qrPayload,
           isLoading: _isLoadingQris,
+          isExpired: _isExpired,
+          isCancelled: _isCancelled,
           size: isMobile ? 170 : 196,
           onTap: _simulateOrVerify,
         ),
@@ -474,31 +608,123 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
         ),
         const SizedBox(height: 14),
 
-        // 6. Label Status / Error Menunggu Konfirmasi Pembayaran
+        // 6. Label Status / Error Menunggu Konfirmasi Pembayaran + Timer
         _buildStatusOrErrorWidget(isMobile: isMobile),
         const SizedBox(height: 24),
 
-        // 7. Tombol Batalkan Pembayaran (Filled Style sesuai Gambar 2)
-        SizedBox(
-          height: 44,
-          child: ElevatedButton(
-            onPressed: _onCancel,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4A409A),
-              foregroundColor: Colors.white,
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+        // 7. Tombol Aksi: Batalkan Pembayaran (jika aktif) atau Opsi Buat Ulang / Ganti Tunai (jika kadaluarsa/batal)
+        if (isInactive)
+          _buildInactiveActionButtons(isMobile: isMobile)
+        else
+          SizedBox(
+            height: 44,
+            child: ElevatedButton(
+              onPressed: _onCancel,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A409A),
+                foregroundColor: Colors.white,
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 28),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: const Text(
+                'Batalkan Pembayaran',
+                style: TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: Colors.white,
+                ),
+              ),
             ),
-            child: const Text(
-              'Batalkan Pembayaran',
+          ),
+      ],
+    );
+  }
+
+  /// Widget Tombol saat QRIS Kadaluarsa atau Dibatalkan
+  Widget _buildInactiveActionButtons({required bool isMobile}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          runSpacing: 8,
+          children: [
+            // Tombol Buat Ulang QR
+            ElevatedButton.icon(
+              onPressed: _onRetryQris,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text(
+                'Buat Ulang QR',
+                style: TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4A409A),
+                foregroundColor: Colors.white,
+                elevation: 1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+              ),
+            ),
+
+            // Tombol Ganti ke Tunai
+            OutlinedButton.icon(
+              onPressed: _onSwitchToCash,
+              icon: const Icon(Icons.payments_outlined, size: 16),
+              label: const Text(
+                'Ganti ke Tunai',
+                style: TextStyle(
+                  fontFamily: 'Open Sans',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF5247A1), width: 1.5),
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF5247A1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Hitung mundur tutup otomatis layar
+        InkWell(
+          onTap: _navigateBack,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(
+              'Otomatis kembali dalam $_autoCloseRemainingSeconds detik (Ketuk untuk tutup sekarang)',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontFamily: 'Open Sans',
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-                color: Colors.white,
+                fontSize: isMobile ? 11 : 12,
+                color: const Color(0xFF94A3B8),
+                decoration: TextDecoration.underline,
+                decorationColor: const Color(0xFFCBD5E1),
               ),
             ),
           ),
@@ -509,63 +735,130 @@ class _QrisPaymentScreenState extends ConsumerState<QrisPaymentScreen> {
 
   /// Widget Status / Error Responsif (Anti-Overflow dengan wrapping teks rapi)
   Widget _buildStatusOrErrorWidget({required bool isMobile}) {
+    final isInactive = _isExpired || _isCancelled;
     final isError = _qrisErrorMessage != null;
 
     return InkWell(
-      onTap: _simulateOrVerify,
+      onTap: isInactive ? null : _simulateOrVerify,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 380),
         padding: EdgeInsets.symmetric(
-          horizontal: isError ? 12 : 8,
-          vertical: isError ? 6 : 4,
+          horizontal: (isError || isInactive) ? 12 : 8,
+          vertical: (isError || isInactive) ? 6 : 4,
         ),
-        decoration: isError
+        decoration: (isError || isInactive)
             ? BoxDecoration(
-                color: const Color(0xFFFEF2F2),
+                color: _isExpired
+                    ? const Color(0xFFFEF2F2)
+                    : (_isCancelled
+                        ? const Color(0xFFF8FAFC)
+                        : const Color(0xFFFEF2F2)),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFFECACA), width: 1),
+                border: Border.all(
+                  color: _isExpired
+                      ? const Color(0xFFFECACA)
+                      : (_isCancelled
+                          ? const Color(0xFFE2E8F0)
+                          : const Color(0xFFFECACA)),
+                  width: 1,
+                ),
               )
             : null,
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_isProcessing) ...[
-              const SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Color(0xFF64748B),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_isProcessing) ...[
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ] else if (isInactive) ...[
+                  Icon(
+                    _isExpired
+                        ? Icons.timer_off_outlined
+                        : Icons.cancel_outlined,
+                    size: 16,
+                    color: _isExpired
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 6),
+                ] else if (isError) ...[
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    size: 16,
+                    color: Color(0xFFDC2626),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Flexible(
+                  child: Text(
+                    _isExpired
+                        ? 'QRIS Kedaluwarsa'
+                        : (_isCancelled
+                            ? 'Pembayaran Dibatalkan'
+                            : (_qrisErrorMessage ??
+                                'Menunggu Konfirmasi Pembayaran')),
+                    textAlign: TextAlign.center,
+                    softWrap: true,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'Open Sans',
+                      fontWeight:
+                          isInactive ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: isMobile ? 12 : 13,
+                      color: _isExpired
+                          ? const Color(0xFFDC2626)
+                          : (_isCancelled
+                              ? const Color(0xFF475569)
+                              : (isError
+                                  ? const Color(0xFFDC2626)
+                                  : const Color(0xFF64748B))),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-            ] else if (isError) ...[
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 16,
-                color: Color(0xFFDC2626),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Flexible(
-              child: Text(
-                _qrisErrorMessage ?? 'Menunggu Konfirmasi Pembayaran',
-                textAlign: TextAlign.center,
-                softWrap: true,
-                maxLines: isError ? 3 : 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'Open Sans',
-                  fontWeight: FontWeight.w500,
-                  fontSize: isMobile ? 12 : 13,
-                  color: isError
-                      ? const Color(0xFFDC2626)
-                      : const Color(0xFF64748B),
-                ),
-              ),
+              ],
             ),
+            // Jika QRIS masih aktif, tampilkan sisa waktu countdown 5 menit
+            if (!isInactive && _qrisInfo != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 13,
+                    color: _remainingSeconds <= 60
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Masa berlaku: ${_formatRemainingTime(_remainingSeconds)}',
+                    style: TextStyle(
+                      fontFamily: 'Open Sans',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11.5,
+                      color: _remainingSeconds <= 60
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF64748B),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

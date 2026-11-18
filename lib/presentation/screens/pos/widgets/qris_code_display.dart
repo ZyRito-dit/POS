@@ -75,6 +75,8 @@ class QrCornerFramePainter extends CustomPainter {
 class QrisCodeDisplay extends StatelessWidget {
   final String? qrData;
   final bool isLoading;
+  final bool isExpired;
+  final bool isCancelled;
   final double size;
   final VoidCallback? onTap;
 
@@ -82,48 +84,113 @@ class QrisCodeDisplay extends StatelessWidget {
     super.key,
     required this.qrData,
     this.isLoading = false,
+    this.isExpired = false,
+    this.isCancelled = false,
     this.size = 200.0,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDisabled = isExpired || isCancelled;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: isDisabled ? null : onTap,
       child: CustomPaint(
-        painter: const QrCornerFramePainter(),
+        painter: QrCornerFramePainter(
+          color: isDisabled ? const Color(0xFF94A3B8) : const Color(0xFF1E293B),
+        ),
         child: Container(
           width: size,
           height: size,
           padding: const EdgeInsets.all(22.0),
           alignment: Alignment.center,
-          child: isLoading
-              ? const SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    color: Color(0xFF5247A1),
-                  ),
-                )
-              : (qrData != null && qrData!.isNotEmpty)
-                  ? QrImageView(
-                      data: qrData!,
-                      version: QrVersions.auto,
-                      size: size - 44,
-                      eyeStyle: const QrEyeStyle(
-                        eyeShape: QrEyeShape.square,
-                        color: Color(0xFF1E293B),
-                      ),
-                      dataModuleStyle: const QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: Color(0xFF1E293B),
-                      ),
-                    )
-                  : CustomPaint(
-                      size: Size(size - 44, size - 44),
-                      painter: const SimulatedQrPainter(seed: 42),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // 1. Gambar QR Asli (di-blur / semi-transparan jika non-aktif)
+              Opacity(
+                opacity: isDisabled ? 0.15 : 1.0,
+                child: isLoading
+                    ? const SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: Color(0xFF5247A1),
+                        ),
+                      )
+                    : (qrData != null && qrData!.isNotEmpty)
+                        ? QrImageView(
+                            data: qrData!,
+                            version: QrVersions.auto,
+                            size: size - 44,
+                            eyeStyle: const QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: Color(0xFF1E293B),
+                            ),
+                            dataModuleStyle: const QrDataModuleStyle(
+                              dataModuleShape: QrDataModuleShape.square,
+                              color: Color(0xFF1E293B),
+                            ),
+                          )
+                        : CustomPaint(
+                            size: Size(size - 44, size - 44),
+                            painter: const SimulatedQrPainter(seed: 42),
+                          ),
+              ),
+
+              // 2. Overlay Status jika Kadaluarsa / Dibatalkan
+              if (isDisabled)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.94),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isExpired
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF64748B),
+                      width: 1.2,
                     ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isExpired
+                            ? Icons.timer_off_outlined
+                            : Icons.cancel_outlined,
+                        size: 22,
+                        color: isExpired
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF64748B),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        isExpired ? 'Kadaluarsa' : 'Dibatalkan',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Open Sans',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                          color: isExpired
+                              ? const Color(0xFFDC2626)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
